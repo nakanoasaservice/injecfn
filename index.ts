@@ -1,10 +1,10 @@
-type Injectable<
+type Constructor<
   Requires extends Record<string, unknown> | unknown,
   Args extends unknown[],
   Return,
 > = (deps: Requires) => (...args: Args) => Return;
 
-type InjectableWithDefaults<
+type ConstructorWithDefaults<
   Requires extends Record<string, unknown> | unknown,
   Defaults extends Record<string, unknown>,
   Args extends unknown[],
@@ -15,14 +15,14 @@ type InjectableWithDefaults<
     | ((defaults: Defaults) => Requires & Partial<Defaults>),
 ) => (...args: Args) => Return;
 
-export type Injected<
-  InjectableFn extends (deps: never) => (...args: never[]) => unknown,
-> = InjectableFn extends (deps: never) => infer Fn ? Fn : never;
+export type Constructed<
+  ConstructorFn extends (deps: never) => (...args: never[]) => unknown,
+> = ConstructorFn extends (deps: never) => infer Fn ? Fn : never;
 
-class InjectableBuilder<Requires extends Record<string, unknown> | unknown> {
+class ConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
   fn<Args extends unknown[], Return>(
     f: (deps: Requires, ...args: Args) => Return,
-  ): Injectable<Requires, Args, Return> {
+  ): Constructor<Requires, Args, Return> {
     return (deps: Requires) => (...args: Args) => f(deps, ...args);
   }
 
@@ -33,7 +33,7 @@ class InjectableBuilder<Requires extends Record<string, unknown> | unknown> {
   >(
     defaults: Defaults,
     f: (deps: Requires & Defaults, ...args: Args) => Return,
-  ): InjectableWithDefaults<Requires, Defaults, Args, Return> {
+  ): ConstructorWithDefaults<Requires, Defaults, Args, Return> {
     return (deps) => {
       const allDeps = {
         ...defaults,
@@ -45,10 +45,10 @@ class InjectableBuilder<Requires extends Record<string, unknown> | unknown> {
   }
 }
 
-const builder = new InjectableBuilder<unknown>();
+const builder = new ConstructorBuilder<unknown>();
 
-export function injectable<
+export function injecfn<
   Requires extends Record<string, unknown> | unknown = unknown,
->(): InjectableBuilder<Requires> {
-  return builder as InjectableBuilder<Requires>;
+>(): ConstructorBuilder<Requires> {
+  return builder as ConstructorBuilder<Requires>;
 }

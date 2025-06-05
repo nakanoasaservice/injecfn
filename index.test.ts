@@ -1,11 +1,11 @@
-import { injectable } from "./index.ts";
+import { injecfn } from "./index.ts";
 import { describe, it } from "https://deno.land/std@0.207.0/testing/bdd.ts";
 import { assertEquals } from "https://deno.land/std@0.207.0/assert/mod.ts";
 
-describe("injectable", () => {
+describe("injecfn", () => {
   describe("fn", () => {
     it("should correctly inject dependencies and arguments", () => {
-      const constructSum = injectable<{ factor: number }>().fn(
+      const constructSum = injecfn<{ factor: number }>().fn(
         ({ factor }: { factor: number }, a: number, b: number) =>
           factor * (a + b),
       );
@@ -18,7 +18,7 @@ describe("injectable", () => {
     });
 
     it("should work with no dependencies", () => {
-      const constructConcat = injectable().fn(
+      const constructConcat = injecfn().fn(
         (_deps: unknown, a: string, b: string) => a + b,
       );
       const concat = constructConcat({}); // or constructConcat(undefined)
@@ -26,7 +26,7 @@ describe("injectable", () => {
     });
 
     it("should work with no dependencies and no arguments", () => {
-      const constructHelloWorld = injectable().fn(() => "hello world");
+      const constructHelloWorld = injecfn().fn(() => "hello world");
       const helloWorld = constructHelloWorld({});
       assertEquals(helloWorld(), "hello world");
     });
@@ -38,7 +38,7 @@ describe("injectable", () => {
     type GreetingDeps = GreetingRequires & GreetingDefaults;
 
     it("should use default dependencies when not provided", () => {
-      const constructGreeting = injectable<GreetingRequires>()
+      const constructGreeting = injecfn<GreetingRequires>()
         .fnWithDefaults(
           { suffix: "!" } as GreetingDefaults,
           (
@@ -52,7 +52,7 @@ describe("injectable", () => {
     });
 
     it("should override default dependencies when provided as object", () => {
-      const constructGreeting = injectable<GreetingRequires>()
+      const constructGreeting = injecfn<GreetingRequires>()
         .fnWithDefaults(
           { suffix: "!" } as GreetingDefaults,
           (
@@ -75,7 +75,7 @@ describe("injectable", () => {
       & DerivedGreetingDefaults;
 
     it("should derive dependencies when provided as function", () => {
-      const constructGreeting = injectable<DerivedGreetingRequires>()
+      const constructGreeting = injecfn<DerivedGreetingRequires>()
         .fnWithDefaults(
           { defaultSuffix: "!" } as DerivedGreetingDefaults,
           (
@@ -104,7 +104,7 @@ describe("injectable", () => {
       & AdvancedGreetingDefaults;
 
     it("should override defaults when deps function provides overlapping values", () => {
-      const constructAdvancedGreeting = injectable<AdvancedGreetingRequires>()
+      const constructAdvancedGreeting = injecfn<AdvancedGreetingRequires>()
         .fnWithDefaults(
           { suffix: "!", prefix: "Dear " } as AdvancedGreetingDefaults,
           (
@@ -127,7 +127,7 @@ describe("injectable", () => {
     type DefaultMessageDeps = DefaultMessageDefaults;
 
     it("should work with no required dependencies but with defaults", () => {
-      const constructDefaultMessage = injectable()
+      const constructDefaultMessage = injecfn()
         .fnWithDefaults(
           { message: "default message" } as DefaultMessageDefaults,
           ({ message }: DefaultMessageDeps, prefix: string) =>
@@ -146,7 +146,7 @@ describe("injectable", () => {
     type ComplexDeps = ComplexRequires & ComplexDefaults;
 
     it("complex scenario from user example", () => {
-      const constructTestFn = injectable<ComplexRequires>()
+      const constructTestFn = injecfn<ComplexRequires>()
         .fnWithDefaults(
           { def1: "foo", def2: 1 } as ComplexDefaults,
           (

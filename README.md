@@ -24,7 +24,7 @@ environments by:
 ## Features
 
 - **Type-Safe Dependency Injection**: Catch dependency errors at compile time.
-- **Fluent Builder API**: Chain methods to define your injectable functions.
+- **Fluent Builder API**: Chain methods to define your injecfn functions.
 - **Required Dependencies**: Clearly define what a function needs to operate.
 - **Default Dependencies**: Provide default values for dependencies, which can
   be overridden.
@@ -42,18 +42,18 @@ as a local module.
 For now, assuming it's a local module:
 
 ```typescript
-import { injectable } from "@nakanoaas/injecfn"; // Adjust path as necessary
+import { injecfn } from "@nakanoaas/injecfn"; // Adjust path as necessary
 ```
 
 ## Basic Usage
 
-### Defining a simple injectable function
+### Defining a simple injecfn function
 
 ```typescript
-import { injectable } from "@nakanoaas/injecfn";
+import { injecfn } from "@nakanoaas/injecfn";
 
 // Define a function that requires a 'factor' dependency
-const multiplyByFactor = injectable<{ factor: number }>()
+const multiplyByFactor = injecfn<{ factor: number }>()
   .fn(({ factor }, num: number) => {
     return factor * num;
   });
@@ -72,10 +72,10 @@ console.log(multiplyByFive(3)); // Output: 15
 dependencies.
 
 ```typescript
-import { injectable } from "@nakanoaas/injecfn";
+import { injecfn } from "@nakanoaas/injecfn";
 
 // Define a function that requires 'name' and has a default 'punctuation'
-const createGreeting = injectable<{ name: string }>()
+const createGreeting = injecfn<{ name: string }>()
   .fnWithDefaults(
     { punctuation: "!" }, // Default dependency
     ({ name, punctuation }, greetingWord: string) => {
@@ -102,9 +102,9 @@ dependencies and returns the required ones. This is useful for deriving
 dependencies based on defaults.
 
 ```typescript
-import { injectable } from "@nakanoaas/injecfn";
+import { injecfn } from "@nakanoaas/injecfn";
 
-const constructMessage = injectable<
+const constructMessage = injecfn<
   { messagePrefix: string; userCount: number }
 >()
   .fnWithDefaults(
@@ -124,7 +124,7 @@ console.log(adminMessage("System rebooting"));
 // Output: Admin Log: System rebooting (Users: 42)
 
 // Example from your initial query:
-const constructTestFn = injectable<{ req1: number; req2: string }>()
+const constructTestFn = injecfn<{ req1: number; req2: string }>()
   .fnWithDefaults(
     { def1: "foo", def2: 1 },
     ({ req1, req2, def1, def2 }, arg1: number, arg2: string) => {
@@ -144,9 +144,9 @@ console.log(testFn2(200, "world")); // Output: 3 baz foo 1 200 world
 
 ## API Reference
 
-### `injectable<Requires extends Record<string, unknown> | unknown>()`
+### `injecfn<Requires extends Record<string, unknown> | unknown>()`
 
-Initiates the builder for an injectable function.
+Initiates the builder for an injecfn function.
 
 - **`Requires`**: A generic type parameter defining the shape of the
   dependencies object required by the function. Defaults to `unknown` if no
@@ -158,19 +158,18 @@ Returns a `Builder` instance.
 
 #### `fn<Args extends unknown[], Return>(factory: (deps: Requires, ...args: Args) => Return)`
 
-Defines an injectable function without default dependencies.
+Defines an injecfn function without default dependencies.
 
 - **`Args`**: An array type for the arguments the final function will take.
 - **`Return`**: The return type of the final function.
 - **`factory`**: A function that takes the `deps` object (of type `Requires`)
   and any runtime `...args`, and returns a value of type `Return`.
 
-Returns an `Injectable` function:
-`(deps: Requires) => (...args: Args) => Return`.
+Returns an `injecfn` function: `(deps: Requires) => (...args: Args) => Return`.
 
 #### `fnWithDefaults<Defaults extends Record<string, unknown>, Args extends unknown[], Return>(defaults: Defaults, factory: (deps: Requires & Defaults, ...args: Args) => Return)`
 
-Defines an injectable function with default dependencies.
+Defines an injecfn function with default dependencies.
 
 - **`Defaults`**: A type for the default dependencies object.
 - **`Args`**: An array type for the arguments the final function will take.
@@ -180,7 +179,7 @@ Defines an injectable function with default dependencies.
   `Requires & Defaults`) and any runtime `...args`, and returns a value of type
   `Return`.
 
-Returns an `InjectableWithDefaults` function:
+Returns an `injecfnWithDefaults` function:
 `(deps: (Requires & Partial<Defaults>) | ((defaults: Defaults) => Requires & Partial<Defaults>)) => (...args: Args) => Return`.
 
 This means you can provide dependencies either as an object that merges
