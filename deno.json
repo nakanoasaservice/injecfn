@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "name": "@nakanoaas/injecfn",
+  "license": "MIT",
+  "exports": "./index.ts",
+  "tasks": {
+    "build": "deno run -A build.ts"
+  },
+  "publish": {
+    "include": [
+      "LICENSE",
+      "README.md",
+      "index.ts"
+    ]
+  },
+  "compilerOptions": {
+    "strictPropertyInitialization": false,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "imports": {
+    "@deno/dnt": "jsr:@deno/dnt@^0.42.1"
+  }
+}
