@@ -19,7 +19,7 @@ export type Injected<
   InjectableFn extends (deps: never) => (...args: never[]) => unknown,
 > = InjectableFn extends (deps: never) => infer Fn ? Fn : never;
 
-class Builder<Requires extends Record<string, unknown> | unknown> {
+class InjectableBuilder<Requires extends Record<string, unknown> | unknown> {
   fn<Args extends unknown[], Return>(
     f: (deps: Requires, ...args: Args) => Return,
   ): Injectable<Requires, Args, Return> {
@@ -45,10 +45,10 @@ class Builder<Requires extends Record<string, unknown> | unknown> {
   }
 }
 
-const builder = new Builder<unknown>();
+const builder = new InjectableBuilder<unknown>();
 
 export function injectable<
   Requires extends Record<string, unknown> | unknown = unknown,
->(): Builder<Requires> {
-  return builder as Builder<Requires>;
+>(): InjectableBuilder<Requires> {
+  return builder as InjectableBuilder<Requires>;
 }
