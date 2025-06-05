@@ -15,6 +15,10 @@ type InjectableWithDefaults<
     | ((defaults: Defaults) => Requires & Partial<Defaults>),
 ) => (...args: Args) => Return;
 
+export type Injected<
+  InjectableFn extends (deps: never) => (...args: never[]) => unknown,
+> = InjectableFn extends (deps: never) => infer Fn ? Fn : never;
+
 class Builder<Requires extends Record<string, unknown> | unknown> {
   fn<Args extends unknown[], Return>(
     f: (deps: Requires, ...args: Args) => Return,
