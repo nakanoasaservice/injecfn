@@ -10,53 +10,83 @@
 
 ## What is `injecfn`?
 
-`injecfn` provides a clean, minimalistic way to apply the Dependency Injection
-(DI) pattern to your TypeScript/JavaScript functions. Inspired by constructor
-injection in object-oriented programming, it helps you write modular, testable,
-and maintainable code by decoupling your function's logic from its concrete
-dependencies.
+Tired of functions with messy signatures that mix essential dependencies with
+optional configurations? `injecfn` helps you cleanly separate what a function
+**requires** from what it **can** use with sensible defaults. This makes your
+code more modular, testable, and easier to use.
 
-**Instead of this...**
+**The Problem:** Functions often need a mix of dependencies. Some are essential
+(`paymentProcessor`), while others are good to have but can be defaulted
+(`logger`). This can lead to complex signatures and call sites.
 
 ```typescript
-// Hard-coded, coupled dependency
-import { someApiClient } from "./api-client";
-
-function fetchUser(id: string) {
-  return someApiClient.get(`/users/${id}`);
+// A traditional function with mixed concerns in its signature.
+function processOrder(
+  order: Order,
+  paymentProcessor: PaymentProcessor,
+  logger: Logger = console, // Optional args can make things messy.
+) {
+  logger.log(`Processing order ${order.id}`);
+  paymentProcessor.charge(order.amount);
 }
 
-// How do you test this without making a real API call?
+// Call sites require careful argument positioning or configuration objects.
+processOrder(myOrder, stripeProcessor);
+processOrder(myOrder, stripeProcessor, customLogger);
 ```
 
-**...you can write this:**
+**The `injecfn` Solution:** Decouple the function's logic from its dependency
+resolution.
 
 ```typescript
-// Dependency is declared and injected
 import { injecfn } from "injecfn";
 
-interface ApiClient {
-  get(path: string): Promise<Response>;
+// 1. Define your dependency types
+interface PaymentProcessor {
+  charge(amount: number): void;
+}
+interface Logger {
+  log(message: string): void;
 }
 
-const constructFetchUser = injecfn<{ apiClient: ApiClient }>().fn(
-  ({ apiClient }, id: string) => {
-    return apiClient.get(`/users/${id}`);
+// 2. Create a constructor, specifying ONLY the types for required dependencies.
+const constructProcessOrder = injecfn<{
+  paymentProcessor: PaymentProcessor;
+}>().fnWithDefaults(
+  // 3. Provide default implementations. Their types are inferred automatically!
+  {
+    logger: console as Logger,
+  },
+  // 4. Write your core logic, decoupled from the outside world.
+  ({ paymentProcessor, logger }, order: Order) => {
+    logger.log(`Processing order ${order.id}`);
+    paymentProcessor.charge(order.amount);
   },
 );
 
-// In your application code:
-const fetchUser = constructFetchUser({ apiClient: realApiClient });
+// --- At instantiation time, things are much cleaner ---
 
-// In your test code:
-const fetchUser_forTest = constructFetchUser({ apiClient: mockApiClient });
+// You ONLY need to provide the required `paymentProcessor`. `logger` is optional.
+const processOrder = constructProcessOrder({
+  paymentProcessor: stripeProcessor,
+});
+
+// ...but you can still override the default when needed, e.g., for tests.
+const processOrderWithCustomLogging = constructProcessOrder({
+  paymentProcessor: stripeProcessor,
+  logger: customAnalyticsLogger,
+});
+
+processOrder(myOrder);
 ```
 
-This simple shift makes your functions incredibly easy to test and reuse.
+Notice the clarity: Required dependencies are enforced by the type system, while
+optional ones are handled gracefully with type inference. This makes your
+functions robust and a pleasure to use.
 
 ## Features
 
-- ✅ **Type-Safe:** Fully typed to catch dependency errors at compile time.
+- ✅ **Type-Safe:** Required dependencies are enforced by type checking.
 - 🚀 **Minimalist API:** Just one core function to learn. Get started in
   minutes.
 - 🧩 **Default Dependencies:** Easily provide default implementations for your
