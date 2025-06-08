@@ -1,171 +1,180 @@
-import { injecfn } from "./index.ts";
-import { describe, it } from "https://deno.land/std@0.207.0/testing/bdd.ts";
-import { assertEquals } from "https://deno.land/std@0.207.0/assert/mod.ts";
+import { describe, it } from "jsr:@std/testing/bdd";
+import { expect } from "jsr:@std/expect";
+import { type Constructed, injecfn } from "./index.ts";
+
+// Mocks and Interfaces for testing
+interface ServiceA {
+  methodA(): string;
+}
+
+interface ServiceB {
+  methodB(s: string): string;
+}
+
+type Greeter = (name: string) => string;
+
+interface Logger {
+  log(message: string): void;
+  history: string[];
+}
+
+const createMockLogger = (): Logger => ({
+  history: [],
+  log(message: string) {
+    this.history.push(message);
+  },
+});
 
 describe("injecfn", () => {
   describe("fn", () => {
-    it("should correctly inject dependencies and arguments", () => {
-      const constructSum = injecfn<{ factor: number }>().fn(
-        ({ factor }: { factor: number }, a: number, b: number) =>
-          factor * (a + b),
+    it("should construct a function that receives dependencies", () => {
+      const construct = injecfn<{ serviceA: ServiceA }>().fn(
+        ({ serviceA }) => serviceA.methodA(),
       );
 
-      const sumWithFactor2 = constructSum({ factor: 2 });
-      assertEquals(sumWithFactor2(3, 4), 14);
+      const serviceA: ServiceA = {
+        methodA: () => "result from A",
+      };
 
-      const sumWithFactor5 = constructSum({ factor: 5 });
-      assertEquals(sumWithFactor5(1, 2), 15);
+      const myFunc = construct({ serviceA });
+
+      expect(myFunc()).toBe("result from A");
     });
 
-    it("should work with no dependencies", () => {
-      const constructConcat = injecfn().fn(
-        (_deps: unknown, a: string, b: string) => a + b,
+    it("should construct a function with arguments", () => {
+      const construct = injecfn<{ serviceB: ServiceB }>().fn(
+        ({ serviceB }, name: string) => serviceB.methodB(name),
       );
-      const concat = constructConcat({}); // or constructConcat(undefined)
-      assertEquals(concat("hello", "world"), "helloworld");
-    });
 
-    it("should work with no dependencies and no arguments", () => {
-      const constructHelloWorld = injecfn().fn(() => "hello world");
-      const helloWorld = constructHelloWorld({});
-      assertEquals(helloWorld(), "hello world");
+      const serviceB: ServiceB = {
+        methodB: (s) => `Hello, ${s}`,
+      };
+
+      const myFunc = construct({ serviceB });
+
+      expect(myFunc("World")).toBe("Hello, World");
     });
   });
 
   describe("fnWithDefaults", () => {
-    type GreetingRequires = { name: string };
-    type GreetingDefaults = { suffix: string };
-    type GreetingDeps = GreetingRequires & GreetingDefaults;
+    it("should use default dependencies when none are provided", () => {
+      const mockLogger = createMockLogger();
 
-    it("should use default dependencies when not provided", () => {
-      const constructGreeting = injecfn<GreetingRequires>()
-        .fnWithDefaults(
-          { suffix: "!" } as GreetingDefaults,
-          (
-            { name, suffix }: GreetingDeps,
-            salutation: string,
-          ) => `${salutation}, ${name}${suffix}`,
-        );
+      const construct = injecfn().fnWithDefaults(
+        {
+          greeter: (name: string) => `Hi, ${name}`,
+          logger: mockLogger,
+        },
+        ({ greeter, logger }, name: string) => {
+          const msg = greeter(name);
+          logger.log(msg);
+          return msg;
+        },
+      );
 
-      const greetJohn = constructGreeting({ name: "John" });
-      assertEquals(greetJohn("Hello"), "Hello, John!");
+      const myFunc = construct({});
+      const result = myFunc("Default");
+
+      expect(result).toBe("Hi, Default");
+      expect(mockLogger.history).toEqual(["Hi, Default"]);
     });
 
-    it("should override default dependencies when provided as object", () => {
-      const constructGreeting = injecfn<GreetingRequires>()
-        .fnWithDefaults(
-          { suffix: "!" } as GreetingDefaults,
-          (
-            { name, suffix }: GreetingDeps,
-            salutation: string,
-          ) => `${salutation}, ${name}${suffix}`,
-        );
+    it("should allow overriding default dependencies", () => {
+      const defaultLogger = createMockLogger();
+      const customLogger = createMockLogger();
 
-      const greetJaneWithQuestion = constructGreeting({
-        name: "Jane",
-        suffix: "?", // Overrides default
+      const construct = injecfn().fnWithDefaults(
+        {
+          greeter: (name: string) => `Hi, ${name}`,
+          logger: defaultLogger,
+        },
+        ({ greeter, logger }, name: string) => {
+          const msg = greeter(name);
+          logger.log(msg);
+          return msg;
+        },
+      );
+
+      const myFunc = construct({
+        greeter: (name: string) => `Yo, ${name}`,
+        logger: customLogger,
       });
-      assertEquals(greetJaneWithQuestion("Hi"), "Hi, Jane?");
+
+      const result = myFunc("Custom");
+
+      expect(result).toBe("Yo, Custom");
+      expect(defaultLogger.history).toEqual([]);
+      expect(customLogger.history).toEqual(["Yo, Custom"]);
     });
 
-    type DerivedGreetingRequires = { baseName: string };
-    type DerivedGreetingDefaults = { defaultSuffix: string };
-    type DerivedGreetingDeps =
-      & DerivedGreetingRequires
-      & DerivedGreetingDefaults;
+    it("should merge required and default dependencies", () => {
+      const mockLogger = createMockLogger();
 
-    it("should derive dependencies when provided as function", () => {
-      const constructGreeting = injecfn<DerivedGreetingRequires>()
-        .fnWithDefaults(
-          { defaultSuffix: "!" } as DerivedGreetingDefaults,
-          (
-            { baseName, defaultSuffix }: DerivedGreetingDeps,
-            salutation: string,
-          ) => {
-            const name = baseName.toUpperCase();
-            const suffix = defaultSuffix;
-            return `${salutation}, ${name}${suffix}`;
-          },
-        );
-
-      const greetViaFunction = constructGreeting(
-        (_defaults: DerivedGreetingDefaults) => ({
-          baseName: "Alice",
-          // defaultSuffix will be merged from defaults
-        }),
+      const construct = injecfn<{ serviceB: ServiceB }>().fnWithDefaults(
+        { logger: mockLogger },
+        ({ serviceB, logger }, text: string) => {
+          const msg = serviceB.methodB(text);
+          logger.log(msg);
+        },
       );
-      assertEquals(greetViaFunction("Welcome"), "Welcome, ALICE!");
+
+      const serviceB: ServiceB = {
+        methodB: (s) => `ServiceB says: ${s}`,
+      };
+
+      const myFunc = construct({ serviceB });
+      myFunc("Test");
+
+      expect(mockLogger.history).toEqual(["ServiceB says: Test"]);
     });
 
-    type AdvancedGreetingRequires = { name: string };
-    type AdvancedGreetingDefaults = { suffix: string; prefix: string };
-    type AdvancedGreetingDeps =
-      & AdvancedGreetingRequires
-      & AdvancedGreetingDefaults;
+    it("should work with a function to create dependencies", () => {
+      const defaultLogger = createMockLogger();
+      const customLogger = createMockLogger();
 
-    it("should override defaults when deps function provides overlapping values", () => {
-      const constructAdvancedGreeting = injecfn<AdvancedGreetingRequires>()
-        .fnWithDefaults(
-          { suffix: "!", prefix: "Dear " } as AdvancedGreetingDefaults,
-          (
-            { name, suffix, prefix }: AdvancedGreetingDeps,
-            salutation: string,
-          ) => `${salutation} ${prefix}${name}${suffix}`,
-        );
-
-      const greetBob = constructAdvancedGreeting(
-        (_defaults: AdvancedGreetingDefaults) => ({
-          name: "Bob",
-          suffix: ".", // Override default "!"
-          // prefix will use defaults.prefix "Dear "
-        }),
+      const construct = injecfn().fnWithDefaults(
+        { logger: defaultLogger },
+        ({ logger }, message: string) => {
+          logger.log(message);
+        },
       );
-      assertEquals(greetBob("Greetings"), "Greetings Dear Bob.");
+
+      const myFunc = construct((defaults) => {
+        expect(defaults.logger).toBe(defaultLogger); // Check if we get the defaults
+        return { logger: customLogger };
+      });
+
+      myFunc("message from function deps");
+
+      expect(defaultLogger.history).toEqual([]);
+      expect(customLogger.history).toEqual(["message from function deps"]);
     });
+  });
 
-    type DefaultMessageDefaults = { message: string };
-    type DefaultMessageDeps = DefaultMessageDefaults;
+  describe("Constructed type helper", () => {
+    it("should correctly infer the function type", () => {
+      // This test primarily serves as a compile-time check to ensure the
+      // Constructed type utility works as expected. The runtime assertions
+      // confirm that the function behaves correctly.
 
-    it("should work with no required dependencies but with defaults", () => {
-      const constructDefaultMessage = injecfn()
-        .fnWithDefaults(
-          { message: "default message" } as DefaultMessageDefaults,
-          ({ message }: DefaultMessageDeps, prefix: string) =>
-            `${prefix}: ${message}`,
-        );
+      const construct = injecfn<{ serviceA: ServiceA }>().fn(
+        ({ serviceA }) => serviceA.methodA(),
+      );
 
-      const msg1 = constructDefaultMessage({});
-      assertEquals(msg1("Info"), "Info: default message");
+      type MyFuncType = Constructed<typeof construct>;
 
-      const msg2 = constructDefaultMessage({ message: "override" });
-      assertEquals(msg2("Warn"), "Warn: override");
-    });
+      const serviceA: ServiceA = {
+        methodA: () => "type test",
+      };
 
-    type ComplexRequires = { req1: number; req2: string };
-    type ComplexDefaults = { def1: string; def2: number };
-    type ComplexDeps = ComplexRequires & ComplexDefaults;
+      // The 'myFunc' variable is now correctly typed as () => string
+      const myFunc: MyFuncType = construct({ serviceA });
 
-    it("complex scenario from user example", () => {
-      const constructTestFn = injecfn<ComplexRequires>()
-        .fnWithDefaults(
-          { def1: "foo", def2: 1 } as ComplexDefaults,
-          (
-            { req1, req2, def1, def2 }: ComplexDeps,
-            arg1: number,
-            arg2: string,
-          ) => {
-            return `${req1} ${req2} ${def1} ${def2} ${arg1} ${arg2}`;
-          },
-        );
+      const result: string = myFunc();
+      expect(result).toBe("type test");
 
-      const testFn1 = constructTestFn({ req1: 1, req2: "bar" });
-      assertEquals(testFn1(100, "hello"), "1 bar foo 1 100 hello");
-
-      const testFn2 = constructTestFn((d: ComplexDefaults) => ({
-        req1: d.def1.length,
-        req2: "baz",
-      }));
-      assertEquals(testFn2(200, "world"), "3 baz foo 1 200 world");
+      // @ts-expect-error myFunc should not accept arguments
+      myFunc("should fail");
     });
   });
 });
