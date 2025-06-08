@@ -19,12 +19,12 @@ export type Constructed<
   ConstructorFn extends (deps: never) => (...args: never[]) => unknown,
 > = ConstructorFn extends (deps: never) => infer Fn ? Fn : never;
 
-class FnConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
+interface FnConstructorBuilder<
+  Requires extends Record<string, unknown> | unknown,
+> {
   fn<Args extends unknown[], Return>(
     f: (deps: Requires, ...args: Args) => Return,
-  ): FnConstructor<Requires, Args, Return> {
-    return (deps: Requires) => f.bind(null, deps);
-  }
+  ): FnConstructor<Requires, Args, Return>;
 
   fnWithDefaults<
     Defaults extends Record<string, unknown>,
@@ -33,19 +33,17 @@ class FnConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
   >(
     defaults: Defaults,
     f: (deps: Requires & Defaults, ...args: Args) => Return,
-  ): FnConstructorWithDefaults<Requires, Defaults, Args, Return> {
-    return (deps) => {
-      const allDeps = {
-        ...defaults,
-        ...(typeof deps === "function" ? deps(defaults) : deps),
-      };
-
-      return f.bind(null, allDeps);
-    };
-  }
+  ): FnConstructorWithDefaults<Requires, Defaults, Args, Return>;
 }
 
-const builder = new FnConstructorBuilder<unknown>();
+const builder: FnConstructorBuilder<unknown> = {
+  fn: (f) => (deps: unknown) => f.bind(null, deps),
+  fnWithDefaults: (defaults, f) => (deps) =>
+    f.bind(null, {
+      ...defaults,
+      ...(typeof deps === "function" ? deps(defaults) : deps),
+    }),
+};
 
 export function injecfn<
   Requires extends Record<string, unknown> | unknown = unknown,
