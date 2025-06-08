@@ -1,10 +1,10 @@
-type Constructor<
+type FnConstructor<
   Requires extends Record<string, unknown> | unknown,
   Args extends unknown[],
   Return,
 > = (deps: Requires) => (...args: Args) => Return;
 
-type ConstructorWithDefaults<
+type FnConstructorWithDefaults<
   Requires extends Record<string, unknown> | unknown,
   Defaults extends Record<string, unknown>,
   Args extends unknown[],
@@ -19,10 +19,10 @@ export type Constructed<
   ConstructorFn extends (deps: never) => (...args: never[]) => unknown,
 > = ConstructorFn extends (deps: never) => infer Fn ? Fn : never;
 
-class ConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
+class FnConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
   fn<Args extends unknown[], Return>(
     f: (deps: Requires, ...args: Args) => Return,
-  ): Constructor<Requires, Args, Return> {
+  ): FnConstructor<Requires, Args, Return> {
     return (deps: Requires) => f.bind(null, deps);
   }
 
@@ -33,7 +33,7 @@ class ConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
   >(
     defaults: Defaults,
     f: (deps: Requires & Defaults, ...args: Args) => Return,
-  ): ConstructorWithDefaults<Requires, Defaults, Args, Return> {
+  ): FnConstructorWithDefaults<Requires, Defaults, Args, Return> {
     return (deps) => {
       const allDeps = {
         ...defaults,
@@ -45,10 +45,10 @@ class ConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
   }
 }
 
-const builder = new ConstructorBuilder<unknown>();
+const builder = new FnConstructorBuilder<unknown>();
 
 export function injecfn<
   Requires extends Record<string, unknown> | unknown = unknown,
->(): ConstructorBuilder<Requires> {
-  return builder as ConstructorBuilder<Requires>;
+>(): FnConstructorBuilder<Requires> {
+  return builder as FnConstructorBuilder<Requires>;
 }
