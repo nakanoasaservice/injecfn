@@ -37,7 +37,7 @@ interface FnConstructorBuilder<
 }
 
 const builder: FnConstructorBuilder<unknown> = {
-  fn: (f) => (deps: unknown) => f.bind(null, deps),
+  fn: (f) => (deps) => f.bind(null, deps),
   fnWithDefaults: (defaults, f) => (deps) =>
     f.bind(null, {
       ...defaults,
