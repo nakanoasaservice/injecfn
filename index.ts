@@ -12,7 +12,7 @@ type FnConstructorWithDefaults<
 > = (
   deps:
     | (Requires & Partial<Defaults>)
-    | ((defaults: Defaults) => Requires & Partial<Defaults>),
+    | ((defaults: Readonly<Defaults>) => Requires & Partial<Defaults>),
 ) => (...args: Args) => Return;
 
 export type Constructed<
@@ -23,7 +23,7 @@ interface FnConstructorBuilder<
   Requires extends Record<string, unknown> | unknown,
 > {
   fn<Args extends unknown[], Return>(
-    f: (deps: Requires, ...args: Args) => Return,
+    f: (deps: Readonly<Requires>, ...args: Args) => Return,
   ): FnConstructor<Requires, Args, Return>;
 
   fnWithDefaults<
@@ -32,12 +32,12 @@ interface FnConstructorBuilder<
     Return,
   >(
     defaults: Defaults,
-    f: (deps: Requires & Defaults, ...args: Args) => Return,
+    f: (deps: Readonly<Requires & Defaults>, ...args: Args) => Return,
   ): FnConstructorWithDefaults<Requires, Defaults, Args, Return>;
 }
 
 const builder: FnConstructorBuilder<unknown> = {
-  fn: (f) => (deps) => f.bind(null, deps),
+  fn: (f) => (deps) => f.bind(null, deps as Readonly<unknown>),
   fnWithDefaults: (defaults, f) => (deps) =>
     f.bind(null, {
       ...defaults,
