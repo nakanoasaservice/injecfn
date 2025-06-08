@@ -6,7 +6,6 @@ interface Config {
   name: string;
   version: string;
   license: string;
-  sideEffects: boolean;
   compilerOptions: { [key: string]: boolean };
 }
 
@@ -31,8 +30,8 @@ await build({
     name: config.name,
     version: config.version,
     license: config.license,
-    sideEffects: config.sideEffects,
-    description: "A type-safe functional dependency injection solution.",
+    sideEffects: false,
+    description: "Effortless, Type-Safe Dependency Injection for Functions.",
     repository: {
       type: "git",
       url: "git://github.com/nakanoasaservice/injecfn.git",

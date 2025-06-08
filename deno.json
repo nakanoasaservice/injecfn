@@ -2,7 +2,6 @@
   "version": "0.0.5",
   "name": "@nakanoaas/injecfn",
   "license": "MIT",
-  "sideEffects": false,
   "exports": "./index.ts",
   "tasks": {
     "build": "deno run -A build.ts"
