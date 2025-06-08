@@ -89,7 +89,7 @@ describe("injecfn", () => {
         );
 
       const greetViaFunction = constructGreeting(
-        (defaults: DerivedGreetingDefaults) => ({
+        (_defaults: DerivedGreetingDefaults) => ({
           baseName: "Alice",
           // defaultSuffix will be merged from defaults
         }),
@@ -114,7 +114,7 @@ describe("injecfn", () => {
         );
 
       const greetBob = constructAdvancedGreeting(
-        (defaults: AdvancedGreetingDefaults) => ({
+        (_defaults: AdvancedGreetingDefaults) => ({
           name: "Bob",
           suffix: ".", // Override default "!"
           // prefix will use defaults.prefix "Dear "
