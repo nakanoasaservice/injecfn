@@ -1,203 +1,211 @@
-# Injecfn: Type-Safe Dependency Injection for TypeScript/JavaScript
+# injecfn ⚡
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**Effortless, Type-Safe Dependency Injection for Functions.**
 
-`Injecfn` is a lightweight, type-safe dependency injection helper library for
-TypeScript and Deno projects. It provides a fluent and intuitive API to define
-functions with explicit dependencies, offering robust type checking and flexible
-default value management.
+[![JSR](https://jsr.io/badges/@nakanoaas/injecfn)](https://jsr.io/@nakanoaas/injecfn)
+[![npm](https://badge.fury.io/js/@nakanoaas%2Finjecfn.svg)](https://badge.fury.io/js/@nakanoaas%2Finjecfn)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/nakanoaas/injecfn/blob/main/LICENSE)
 
-## Why Injecfn?
+---
 
-Dependency Injection is a powerful pattern for building modular and testable
-applications. `Injecfn` aims to simplify this process in TypeScript/JavaScript
-environments by:
+## What is `injecfn`?
 
-- **Enhancing Type Safety**: Leverages TypeScript's type system to ensure that
-  all required dependencies are correctly provided and typed.
-- **Providing Flexibility**: Easily define required dependencies and optional
-  default dependencies.
-- **Offering a Clean API**: A minimalistic and fluent builder pattern makes
-  defining injectables straightforward.
-- **Simplifying Testing**: Makes it easy to mock dependencies in your tests.
+`injecfn` provides a clean, minimalistic way to apply the Dependency Injection
+(DI) pattern to your TypeScript/JavaScript functions. Inspired by constructor
+injection in object-oriented programming, it helps you write modular, testable,
+and maintainable code by decoupling your function's logic from its concrete
+dependencies.
+
+**Instead of this...**
+
+```typescript
+// Hard-coded, coupled dependency
+import { someApiClient } from "./api-client";
+
+function fetchUser(id: string) {
+  return someApiClient.get(`/users/${id}`);
+}
+
+// How do you test this without making a real API call?
+```
+
+**...you can write this:**
+
+```typescript
+// Dependency is declared and injected
+import { injecfn } from "injecfn";
+
+interface ApiClient {
+  get(path: string): Promise<Response>;
+}
+
+const constructFetchUser = injecfn<{ apiClient: ApiClient }>().fn(
+  ({ apiClient }, id: string) => {
+    return apiClient.get(`/users/${id}`);
+  },
+);
+
+// In your application code:
+const fetchUser = constructFetchUser({ apiClient: realApiClient });
+
+// In your test code:
+const fetchUser_forTest = constructFetchUser({ apiClient: mockApiClient });
+```
+
+This simple shift makes your functions incredibly easy to test and reuse.
 
 ## Features
 
-- **Type-Safe Dependency Injection**: Catch dependency errors at compile time.
-- **Fluent Builder API**: Chain methods to define your injecfn functions.
-- **Required Dependencies**: Clearly define what a function needs to operate.
-- **Default Dependencies**: Provide default values for dependencies, which can
-  be overridden.
-- **Dynamic Dependency Resolution**: Dependencies can be resolved by providing a
-  function that receives the defaults.
-- **Minimal Footprint**: A small, focused library with no external runtime
+- ✅ **Type-Safe:** Fully typed to catch dependency errors at compile time.
+- 🚀 **Minimalist API:** Just one core function to learn. Get started in
+  minutes.
+- 🧩 **Default Dependencies:** Easily provide default implementations for your
   dependencies.
+- 📦 **Zero Dependencies:** A single, lightweight file. No baggage.
+- 🌐 **Framework Agnostic:** Works anywhere—Node.js, Deno, browsers, etc.
 
 ## Installation
 
-`Injecfn` is designed for Deno and TypeScript projects. You can import it
-directly from its source URL (once published, e.g., on `deno.land/x`) or use it
-as a local module.
+### Deno (via jsr)
 
-For now, assuming it's a local module:
-
-```typescript
-import { injecfn } from "@nakanoaas/injecfn"; // Adjust path as necessary
+```bash
+deno add @nakanoaas/injecfn
 ```
 
-## Basic Usage
+### Node.js
 
-### Defining a simple injecfn function
+Using npm:
 
-```typescript
-import { injecfn } from "@nakanoaas/injecfn";
-
-// Define a function that requires a 'factor' dependency
-const multiplyByFactor = injecfn<{ factor: number }>()
-  .fn(({ factor }, num: number) => {
-    return factor * num;
-  });
-
-// Provide the dependency and get the final function
-const multiplyByTwo = multiplyByFactor({ factor: 2 });
-console.log(multiplyByTwo(5)); // Output: 10
-
-const multiplyByFive = multiplyByFactor({ factor: 5 });
-console.log(multiplyByFive(3)); // Output: 15
+```bash
+npx jsr add @nakanoaas/injecfn
 ```
 
-### Using Default Dependencies
+Using yarn:
 
-`fnWithDefaults` allows you to specify default values for some or all
-dependencies.
+```bash
+yarn add @nakanoaas/injecfn
+```
+
+Using pnpm:
+
+```bash
+pnpm add @nakanoaas/injecfn
+```
+
+## Usage
+
+Here's a step-by-step guide to using `injecfn`.
+
+### 1. Define Your Dependencies
+
+First, define the types for the services or values your function will depend on.
+These can be interfaces, type aliases, or even simple functions.
 
 ```typescript
-import { injecfn } from "@nakanoaas/injecfn";
+// A function-based dependency
+type Greeter = (name: string) => string;
 
-// Define a function that requires 'name' and has a default 'punctuation'
-const createGreeting = injecfn<{ name: string }>()
-  .fnWithDefaults(
-    { punctuation: "!" }, // Default dependency
-    ({ name, punctuation }, greetingWord: string) => {
-      return `${greetingWord}, ${name}${punctuation}`;
-    },
-  );
+// An object-based dependency
+interface Logger {
+  log(message: string): void;
+}
+```
 
-// Use with only required dependencies (punctuation will be "!")
-const greetAlice = createGreeting({ name: "Alice" });
-console.log(greetAlice("Hello")); // Output: Hello, Alice!
+### 2. Create a Function "Constructor"
 
-// Override the default dependency
-const greetBobWithQuestion = createGreeting({
-  name: "Bob",
-  punctuation: "?",
+Next, use `injecfn` to create a "constructor" for your function. You declare the
+required dependencies as a generic argument and can also provide default
+implementations using `.fnWithDefaults()`.
+
+```typescript
+import { injecfn } from "injecfn";
+
+// This function requires `greeter`, but `logger` is optional as it has a default.
+const constructMyFunction = injecfn<{ greeter: Greeter }>().fnWithDefaults(
+  // Default dependencies
+  {
+    logger: console as Logger, // `console` is used if no logger is provided
+  },
+  // The actual function logic, with dependencies destructured
+  ({ greeter, logger }, name: string) => {
+    const message = greeter(name);
+    logger.log(message);
+    return message;
+  },
+);
+```
+
+### 3. Inject Dependencies to Get Your Function
+
+Now you can "construct" your function by providing the required dependencies.
+
+```typescript
+// Provide the required `greeter` dependency. `logger` will use the default.
+const myFunc = constructMyFunction({
+  greeter: (name) => `Hello, ${name}!`,
 });
-console.log(greetBobWithQuestion("Hi")); // Output: Hi, Bob?
+
+myFunc("World"); // Logs "Hello, World!" to the console
 ```
 
-### Dynamic Dependency Resolution with a Function
+### 4. Override Defaults When Needed
 
-You can also provide a function to `constructTestFn` that receives the default
-dependencies and returns the required ones. This is useful for deriving
-dependencies based on defaults.
+You can easily override the default dependencies for specific use cases, like
+testing.
 
 ```typescript
-import { injecfn } from "@nakanoaas/injecfn";
+const myFuncForAlerts = constructMyFunction({
+  greeter: (name) => `URGENT: ${name}`,
+  logger: {
+    log: (message) => alert(message), // Override the default `console.log`
+  },
+});
 
-const constructMessage = injecfn<
-  { messagePrefix: string; userCount: number }
->()
-  .fnWithDefaults(
-    { defaultSeparator: ": " }, // Default dependency
-    ({ messagePrefix, userCount, defaultSeparator }, mainText: string) => {
-      return `${messagePrefix}${defaultSeparator}${mainText} (Users: ${userCount})`;
-    },
-  );
-
-// Dynamically set 'messagePrefix' and 'userCount' using defaults
-const adminMessage = constructMessage((defaults) => ({
-  messagePrefix: "Admin Log",
-  userCount: 42,
-  // defaultSeparator is available via 'defaults.defaultSeparator' if needed here
-}));
-console.log(adminMessage("System rebooting"));
-// Output: Admin Log: System rebooting (Users: 42)
-
-// Example from your initial query:
-const constructTestFn = injecfn<{ req1: number; req2: string }>()
-  .fnWithDefaults(
-    { def1: "foo", def2: 1 },
-    ({ req1, req2, def1, def2 }, arg1: number, arg2: string) => {
-      return `${req1} ${req2} ${def1} ${def2} ${arg1} ${arg2}`;
-    },
-  );
-
-const testFn1 = constructTestFn({ req1: 1, req2: "bar" });
-console.log(testFn1(100, "hello")); // Output: 1 bar foo 1 100 hello
-
-const testFn2 = constructTestFn((d) => ({
-  req1: d.def1.length, // Derived from default 'def1'
-  req2: "baz",
-}));
-console.log(testFn2(200, "world")); // Output: 3 baz foo 1 200 world
+myFuncForAlerts("System Failure"); // Pops up an alert with "URGENT: System Failure"
 ```
 
 ## API Reference
 
-### `injecfn<Requires extends Record<string, unknown> | unknown>()`
+### `injecfn<Requires>()`
 
-Initiates the builder for an injecfn function.
+The entry point for creating a function constructor.
 
-- **`Requires`**: A generic type parameter defining the shape of the
-  dependencies object required by the function. Defaults to `unknown` if no
-  dependencies are needed.
+- **`Requires`**: A generic type parameter for the required dependencies (e.g.,
+  `{ service: MyService }`). If your function has no required dependencies, you
+  can omit this.
 
-Returns a `Builder` instance.
+### `.fn(implementation)`
 
-### `Builder<Requires>`
+Defines a function where all dependencies specified in `<Requires>` must be
+provided.
 
-#### `fn<Args extends unknown[], Return>(factory: (deps: Requires, ...args: Args) => Return)`
+- **`implementation`**: The function body: `(deps, ...args) => { ... }`.
 
-Defines an injecfn function without default dependencies.
+### `.fnWithDefaults(defaults, implementation)`
 
-- **`Args`**: An array type for the arguments the final function will take.
-- **`Return`**: The return type of the final function.
-- **`factory`**: A function that takes the `deps` object (of type `Requires`)
-  and any runtime `...args`, and returns a value of type `Return`.
+Defines a function with both required and default dependencies.
 
-Returns an `injecfn` function: `(deps: Requires) => (...args: Args) => Return`.
+- **`defaults`**: An object containing default implementations for some
+  dependencies.
+- **`implementation`**: The function body, which receives all merged
+  dependencies.
 
-#### `fnWithDefaults<Defaults extends Record<string, unknown>, Args extends unknown[], Return>(defaults: Defaults, factory: (deps: Requires & Defaults, ...args: Args) => Return)`
+### `Constructed<T>`
 
-Defines an injecfn function with default dependencies.
+A utility type to extract the final, dependency-injected function type from a
+constructor. Useful for type annotations.
 
-- **`Defaults`**: A type for the default dependencies object.
-- **`Args`**: An array type for the arguments the final function will take.
-- **`Return`**: The return type of the final function.
-- **`defaults`**: An object containing the default dependency values.
-- **`factory`**: A function that takes the merged `deps` object (of type
-  `Requires & Defaults`) and any runtime `...args`, and returns a value of type
-  `Return`.
+```typescript
+import { type Constructed } from "injecfn";
 
-Returns an `injecfnWithDefaults` function:
-`(deps: (Requires & Partial<Defaults>) | ((defaults: Defaults) => Requires & Partial<Defaults>)) => (...args: Args) => Return`.
+const constructMyFunc = injecfn<{ api: API }>().fn(...);
 
-This means you can provide dependencies either as an object that merges
-with/overrides defaults, or as a function that takes defaults and returns the
-(partial) required dependencies.
+// MyFuncType is now fully typed as `(arg1: string) => number` (for example)
+type MyFuncType = Constructed<typeof constructMyFunc>;
 
-## Contributing
-
-Contributions are welcome! Please feel free to open an issue or submit a pull
-request.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+const myFunc: MyFuncType = constructMyFunc({ api: realApi });
+```
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` file for more information (you
-would need to create this file).
+This project is licensed under the [MIT License](LICENSE).
