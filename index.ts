@@ -3,14 +3,12 @@
  * This is the return type of {@link FnConstructorBuilder.fn}.
  *
  * @template Requires - A record type of the dependencies that the function requires.
- * @template Args - The arguments of the final constructed function.
- * @template Return - The return type of the final constructed function.
+ * @template Fn - The type of the final constructed function.
  */
 type FnConstructor<
   Requires extends Record<string, unknown> | unknown,
-  Args extends unknown[],
-  Return,
-> = (deps: Requires) => (...args: Args) => Return;
+  Fn extends (...args: never[]) => unknown,
+> = (deps: Requires) => Fn;
 
 /**
  * Represents a function that constructs another function by injecting dependencies,
@@ -23,19 +21,17 @@ type FnConstructor<
  *
  * @template Requires - A record type of the dependencies that the function requires.
  * @template Defaults - A record type of the dependencies that have default values.
- * @template Args - The arguments of the final constructed function.
- * @template Return - The return type of the final constructed function.
+ * @template Fn - The type of the final constructed function.
  */
 type FnConstructorWithDefaults<
   Requires extends Record<string, unknown> | unknown,
   Defaults extends Record<string, unknown>,
-  Args extends unknown[],
-  Return,
+  Fn extends (...args: never[]) => unknown,
 > = (
   deps:
     | (Requires & Partial<Defaults>)
     | ((defaults: Readonly<Defaults>) => Requires & Partial<Defaults>),
-) => (...args: Args) => Return;
+) => Fn;
 
 /**
  * A builder interface for creating function constructors.
@@ -55,7 +51,7 @@ interface FnConstructorBuilder<
    */
   fn<Args extends unknown[], Return>(
     f: (deps: Readonly<Requires>, ...args: Args) => Return,
-  ): FnConstructor<Requires, Args, Return>;
+  ): FnConstructor<Requires, (...args: Args) => Return>;
 
   /**
    * Defines a function that depends on a set of services, with default implementations.
@@ -75,7 +71,7 @@ interface FnConstructorBuilder<
   >(
     defaults: Defaults,
     f: (deps: Readonly<Requires & Defaults>, ...args: Args) => Return,
-  ): FnConstructorWithDefaults<Requires, Defaults, Args, Return>;
+  ): FnConstructorWithDefaults<Requires, Defaults, (...args: Args) => Return>;
 }
 
 const builder: FnConstructorBuilder<unknown> = {
