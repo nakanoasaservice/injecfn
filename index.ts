@@ -15,10 +15,6 @@ type FnConstructorWithDefaults<
     | ((defaults: Readonly<Defaults>) => Requires & Partial<Defaults>),
 ) => (...args: Args) => Return;
 
-export type Constructed<
-  ConstructorFn extends (deps: never) => (...args: never[]) => unknown,
-> = ConstructorFn extends (deps: never) => infer Fn ? Fn : never;
-
 interface FnConstructorBuilder<
   Requires extends Record<string, unknown> | unknown,
 > {
@@ -50,3 +46,7 @@ export function injecfn<
 >(): FnConstructorBuilder<Requires> {
   return builder as FnConstructorBuilder<Requires>;
 }
+
+export type Constructed<
+  ConstructorFn extends (deps: never) => (...args: never[]) => unknown,
+> = ConstructorFn extends (deps: never) => infer Fn ? Fn : never;
