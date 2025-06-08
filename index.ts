@@ -23,7 +23,7 @@ class ConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
   fn<Args extends unknown[], Return>(
     f: (deps: Requires, ...args: Args) => Return,
   ): Constructor<Requires, Args, Return> {
-    return (deps: Requires) => (...args: Args) => f(deps, ...args);
+    return (deps: Requires) => f.bind(null, deps);
   }
 
   fnWithDefaults<
@@ -40,7 +40,7 @@ class ConstructorBuilder<Requires extends Record<string, unknown> | unknown> {
         ...(typeof deps === "function" ? deps(defaults) : deps),
       };
 
-      return (...args: Args) => f(allDeps, ...args);
+      return f.bind(null, allDeps);
     };
   }
 }
