@@ -223,17 +223,27 @@ Defines a function with both required and default dependencies.
 ### `Constructed<T>`
 
 A utility type to extract the final, dependency-injected function type from a
-constructor. Useful for type annotations.
+constructor. This is especially useful for creating **type-safe mock functions
+for your tests**.
 
 ```typescript
-import { type Constructed } from "injecfn";
+import { type Constructed, injecfn } from "injecfn";
 
-const constructMyFunc = injecfn<{ api: API }>().fn(...);
+// Given a function constructor for a function that sends emails...
+const constructSendEmail = injecfn<{ emailer: Emailer }>().fn(
+  ({ emailer }, to: string, subject: string) => emailer.send(to, subject),
+);
 
-// MyFuncType is now fully typed as `(arg1: string) => number` (for example)
-type MyFuncType = Constructed<typeof constructMyFunc>;
+// ...you can easily extract its precise function type.
+type SendEmailFn = Constructed<typeof constructSendEmail>;
+//   ^? type SendEmailFn = (to: string, subject: string) => Promise<void>
 
-const myFunc: MyFuncType = constructMyFunc({ api: realApi });
+// This lets you create a fully type-safe mock without re-writing the signature.
+// TypeScript will ensure your mock matches the real function's parameters and return type.
+const mockSendEmail: SendEmailFn = async (to, subject) => {
+  console.log(`Mock email to ${to} with subject "${subject}"`);
+  // No return needed, it's type-safe!
+};
 ```
 
 ## License
