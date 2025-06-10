@@ -79,6 +79,28 @@ describe("injecfn", () => {
       expect(mockLogger.history).toEqual(["Hi, Default"]);
     });
 
+    it("should work with construct() as well", () => {
+      const mockLogger = createMockLogger();
+
+      const construct = injecfn().fnWithDefaults(
+        {
+          greeter: (name: string) => `Hi, ${name}`,
+          logger: mockLogger,
+        },
+        ({ greeter, logger }, name: string) => {
+          const msg = greeter(name);
+          logger.log(msg);
+          return msg;
+        },
+      );
+
+      const myFunc = construct();
+      const result = myFunc("Default");
+
+      expect(result).toBe("Hi, Default");
+      expect(mockLogger.history).toEqual(["Hi, Default"]);
+    });
+
     it("should allow overriding default dependencies", () => {
       const defaultLogger = createMockLogger();
       const customLogger = createMockLogger();

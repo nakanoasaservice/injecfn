@@ -28,7 +28,7 @@ type FnConstructorWithDefaults<
   Defaults extends Record<string, unknown>,
   Fn extends (...args: never[]) => unknown,
 > = (
-  deps:
+  deps?:
     | (Requires & Partial<Defaults>)
     | ((defaults: Readonly<Defaults>) => Requires & Partial<Defaults>),
 ) => Fn;
