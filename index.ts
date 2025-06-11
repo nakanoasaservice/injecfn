@@ -107,7 +107,7 @@ const builder: FnConstructorBuilder<unknown> = {
  * const constructMyFunction = injecfn<{ greeter: Greeter }>().fnWithDefaults(
  *   // Default dependencies
  *   {
- *     logger: console,
+ *     logger: console as Logger,
  *   },
  *   // The actual function logic
  *   ({ greeter, logger }, name: string) => {
