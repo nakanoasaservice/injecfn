@@ -16,13 +16,14 @@ await build({
   entryPoints: ["./index.ts"],
   outDir: "./dist",
   shims: {
-    deno: true,
+    deno: false,
   },
 
   test: false,
   compilerOptions: {
     ...config.compilerOptions,
-    target: "Latest",
+    target: "ES2015",
+    lib: ["ES2015"],
   },
 
   package: {
