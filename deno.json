@@ -16,7 +16,8 @@
   "compilerOptions": {
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "lib": ["deno.ns"]
   },
   "imports": {
     "@deno/dnt": "jsr:@deno/dnt@^0.42.1",
