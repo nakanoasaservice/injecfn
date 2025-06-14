@@ -1,166 +1,149 @@
 /**
- * Represents a function that constructs another function by injecting dependencies.
- * This is the return type of {@link FnConstructorBuilder.fn}.
- *
- * @template Requires - A record type of the dependencies that the function requires.
- * @template Fn - The type of the final constructed function.
+ * A unique symbol used to identify a required dependency placeholder.
+ * @internal
  */
-type FnConstructor<
-  Requires extends Record<string, unknown> | unknown,
-  Fn extends (...args: never[]) => unknown,
-> = (deps: Requires) => Fn;
+const requiredSymbol = Symbol("required");
 
 /**
- * Represents a function that constructs another function by injecting dependencies,
- * some of which have default values.
- * This is the return type of {@link FnConstructorBuilder.fnWithDefaults}.
+ * A placeholder function to mark a dependency as required.
  *
- * The `deps` parameter can be an object that satisfies the required dependencies and
- * optionally overrides the default ones, or it can be a function that receives the
- * defaults and returns the dependencies.
- *
- * @template Requires - A record type of the dependencies that the function requires.
- * @template Defaults - A record type of the dependencies that have default values.
- * @template Fn - The type of the final constructed function.
+ * @template T - The type of the dependency that is required.
+ * @returns A placeholder value that represents a required dependency.
+ * @example
+ * ```ts
+ * const constructor = defineFn({
+ *   // `db` is a required dependency of type `Database`.
+ *   db: required<Database>(),
+ *   // `logger` has a default value and is not strictly required.
+ *   logger: console,
+ * }, deps => { ... });
+ * ```
  */
-type FnConstructorWithDefaults<
-  Requires extends Record<string, unknown> | unknown,
-  Defaults extends Record<string, unknown>,
-  Fn extends (...args: never[]) => unknown,
-> = (
-  deps?:
-    | (Requires & Partial<Defaults>)
-    | ((defaults: Readonly<Defaults>) => Requires & Partial<Defaults>),
-) => Fn;
-
-/**
- * A builder interface for creating function constructors.
- * @template Requires - A record type of the dependencies that the function requires.
- */
-interface FnConstructorBuilder<
-  Requires extends Record<string, unknown> | unknown,
-> {
-  /**
-   * Defines a function that depends on a set of required services.
-   * All dependencies must be provided when constructing the function.
-   *
-   * @template Args - The arguments of the resulting function.
-   * @template Return - The return type of the resulting function.
-   * @param f - The function implementation. It receives the dependencies as its first argument.
-   * @returns A {@link FnConstructor}.
-   */
-  fn<Args extends unknown[], Return>(
-    f: (deps: Readonly<Requires>, ...args: Args) => Return,
-  ): FnConstructor<Requires, (...args: Args) => Return>;
-
-  /**
-   * Defines a function that depends on a set of services, with default implementations.
-   * This allows for optional overrides of default dependencies when constructing the function.
-   *
-   * @template Defaults - A record type of the default dependencies.
-   * @template Args - The arguments of the resulting function.
-   * @template Return - The return type of the resulting function.
-   * @param defaults - An object containing the default dependencies.
-   * @param f - The function implementation. It receives all dependencies (required and default) as its first argument.
-   * @returns A {@link FnConstructorWithDefaults}.
-   */
-  fnWithDefaults<
-    Defaults extends Record<string, unknown>,
-    Args extends unknown[],
-    Return,
-  >(
-    defaults: Defaults,
-    f: (deps: Readonly<Requires & Defaults>, ...args: Args) => Return,
-  ): FnConstructorWithDefaults<Requires, Defaults, (...args: Args) => Return>;
+export function required<T>(): Required<T> {
+  return requiredSymbol as Required<T>;
 }
 
-const builder: FnConstructorBuilder<unknown> = {
-  fn: (f) => (deps) => f.bind(null, deps as Readonly<unknown>),
-  fnWithDefaults: (defaults, f) => (deps) =>
-    f.bind(null, {
-      ...defaults,
-      ...(typeof deps === "function" ? deps(defaults) : deps),
-    }),
+/**
+ * A branded type representing a required dependency placeholder.
+ * @template T - The type of the required dependency.
+ * @internal
+ */
+type Required<T> = typeof requiredSymbol & {
+  _type: T;
 };
 
 /**
- * Creates a builder for functions that require dependency injection.
- * This is a lightweight helper for providing dependency injection (DI) capabilities,
- * similar to constructor injection in classes, but for functions.
- *
- * It allows you to define a function that depends on a set of services or configurations,
- * and then create instances of that function with the dependencies supplied at runtime.
- *
- * @template Requires - A record type of the dependencies that the function requires.
- * @returns A {@link FnConstructorBuilder} to define the function.
- *
- * @example
- * ```ts
- * // 1. Define the dependencies your function will need.
- * type Greeter = (name: string) => string;
- *
- * interface Logger {
- *   log(message: string): void;
- * }
- *
- * // 2. Create a function constructor using `injecfn`.
- * const constructMyFunction = injecfn<{ greeter: Greeter }>().fnWithDefaults(
- *   // Default dependencies
- *   {
- *     logger: console as Logger,
- *   },
- *   // The actual function logic
- *   ({ greeter, logger }, name: string) => {
- *     const message = greeter(name);
- *     logger.log(message);
- *     return message;
- *   },
- * );
- *
- * // 3. "Instantiate" the function by providing the required dependencies.
- * const myFunc = constructMyFunction({
- *   greeter: (name) => `Hello, ${name}!`,
- *   // The `logger` dependency is optional here because it has a default value.
- * });
- *
- * // 4. Use the constructed function.
- * myFunc("World"); // Logs "Hello, World!" and returns it.
- *
- * // You can also override the default dependencies.
- * const myFuncWithCustomLogger = constructMyFunction({
- *   greeter: (name) => `Hi, ${name}!`,
- *   logger: {
- *     log: (message) => alert(message),
- *   },
- * });
- *
- * myFuncWithCustomLogger("User"); // Alerts "Hi, User!" and returns it.
- * ```
+ * A utility type that resolves the final dependency types,
+ * replacing `Required<T>` placeholders with their actual type `T`.
+ * @template T - The dependency definition object.
  */
-export function injecfn<
-  Requires extends Record<string, unknown> | unknown = unknown,
->(): FnConstructorBuilder<Requires> {
-  return builder as FnConstructorBuilder<Requires>;
+export type Dependencies<T extends Record<string, unknown>> = {
+  readonly [K in keyof T]: T[K] extends Required<infer U> ? U : T[K];
+};
+
+/**
+ * A utility type that extracts only the required dependencies from a definition.
+ * It produces an object type where required dependencies are mandatory,
+ * and dependencies with default values are optional (allowing overrides).
+ * @template T - The dependency definition object.
+ */
+export type Requirements<T extends Record<string, unknown>> =
+  & {
+    // Extracts keys for properties typed as `Required<T>` and makes them non-optional.
+    [K in keyof T as T[K] extends Required<unknown> ? K : never]: T[K] extends
+      Required<infer U> ? U : never;
+  }
+  & {
+    // Extracts keys for properties that are not `Required<T>` and makes them optional.
+    [K in keyof T as T[K] extends Required<unknown> ? never : K]?: T[K];
+  };
+
+/**
+ * A type-level boolean to check if a dependency definition object has any
+ * `Required<T>` placeholders.
+ * @template R - The dependency definition object.
+ * @internal
+ */
+type HasRequirements<
+  R extends Record<string, unknown>,
+> = Extract<R[keyof R], Required<unknown>> extends never ? false : true;
+
+/**
+ * Represents the constructor function returned by `defineFn`.
+ * It is a callable function that may or may not require an argument,
+ * depending on whether there are required dependencies.
+ *
+ * @template T - The dependency definition object.
+ * @template Args - The arguments of the final constructed function.
+ * @template Return - The return type of the final constructed function.
+ */
+export interface FnConstructor<
+  T extends Record<string, unknown>,
+  Args extends unknown[],
+  Return,
+> {
+  /**
+   * Constructs the final function by providing dependencies.
+   * @param requirements - An object containing the required dependencies and any optional overrides.
+   *                       This argument is optional if no dependencies are marked as `required`.
+   */
+  (
+    ...args: HasRequirements<T> extends true ? [requirements: Requirements<T>]
+      : [requirements?: Requirements<T>]
+  ): (...args: Args) => Return;
 }
 
 /**
- * A utility type to extract the final, constructed function type from a {@link FnConstructor}
- * or {@link FnConstructorWithDefaults}.
+ * Defines a function with its dependencies.
  *
- * @template ConstructorFn - The type of the function constructor.
+ * This function takes a dependency definition object and a function implementation.
+ * It returns a "constructor" function. This constructor, when called, receives
+ * the required dependencies and returns the final, dependency-injected function.
+ *
+ * @template T - The dependency definition object, which can include both default values and `required<T>()` placeholders.
+ * @template Args - The arguments of the resulting function.
+ * @template Return - The return type of the resulting function.
+ * @param dependencies - An object defining the dependencies. Use a direct value for defaults, and `required<T>()` for mandatory dependencies.
+ * @param f - The function implementation, which receives the resolved dependencies as its first argument.
+ * @returns A constructor function to which you pass the required dependencies.
+ */
+export function defineFn<
+  T extends Record<string, unknown>,
+  Args extends unknown[],
+  Return,
+>(
+  dependencies: T,
+  f: (deps: Dependencies<T>, ...args: Args) => Return,
+): FnConstructor<T, Args, Return> {
+  const constructor = (requirements: Requirements<T>) => {
+    // The `bind` method creates a new function that, when called, has its
+    // `this` keyword set to the provided value, with a given sequence of arguments
+    // preceding any provided when the new function is called.
+    // We use `null` for `this` as it's not used, and we pre-fill the `deps` argument.
+    return f.bind(
+      null,
+      { ...dependencies, ...requirements } as Dependencies<T>,
+    );
+  };
+
+  // The constructor's `requirements` argument is made optional if no dependencies are
+  // marked as `required<T>()`. This provides a better developer experience.
+  return constructor as FnConstructor<T, Args, Return>;
+}
+
+/**
+ * A utility type to extract the final, constructed function type from a constructor.
+ *
+ * @template ConstructorFn - The type of the function constructor returned by `defineFn`.
  * @example
  * ```ts
- * const constructMy = injecfn<{ service: { do(): string } }>().fn(
- *   ({ service }) => service.do(),
- * );
+ * const constructMyFn = defineFn({ db: required<DB>() }, () => { ... });
  *
- * // Get the type of the function that will be created
- * type MyFunction = Constructed<typeof constructMy>;
- * // type MyFunction = () => string
- *
- * const myFunc: MyFunction = constructMy({ service: { do: () => "Done" } });
+ * // Extracts the type of the function created after providing dependencies.
+ * // type MyFn = () => void
+ * type MyFn = Constructed<typeof constructMyFn>;
  * ```
  */
 export type Constructed<
-  ConstructorFn extends (deps: never) => (...args: never[]) => unknown,
-> = ConstructorFn extends (deps: never) => infer Fn ? Fn : never;
+  ConstructorFn extends (...args: never[]) => (...args: never[]) => unknown,
+> = ReturnType<ConstructorFn>;
