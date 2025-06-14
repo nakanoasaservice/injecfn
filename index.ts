@@ -143,5 +143,5 @@ export function defineFn<
  * ```
  */
 export type Constructed<
-  ConstructorFn extends (...args: never[]) => (...args: never[]) => unknown,
+  ConstructorFn extends (requirements: never) => (...args: never[]) => unknown,
 > = ReturnType<ConstructorFn>;
