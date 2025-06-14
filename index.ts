@@ -74,13 +74,11 @@ type HasRequirements<
  * depending on whether there are required dependencies.
  *
  * @template T - The dependency definition object.
- * @template Args - The arguments of the final constructed function.
- * @template Return - The return type of the final constructed function.
+ * @template Fn - The type of the final constructed function.
  */
 export interface FnConstructor<
   T extends Record<string, unknown>,
-  Args extends unknown[],
-  Return,
+  Fn extends (...args: never[]) => unknown,
 > {
   /**
    * Constructs the final function by providing dependencies.
@@ -90,7 +88,7 @@ export interface FnConstructor<
   (
     ...args: HasRequirements<T> extends true ? [requirements: Requirements<T>]
       : [requirements?: Requirements<T>]
-  ): (...args: Args) => Return;
+  ): Fn;
 }
 
 /**
@@ -114,7 +112,7 @@ export function defineFn<
 >(
   dependencies: T,
   f: (deps: Dependencies<T>, ...args: Args) => Return,
-): FnConstructor<T, Args, Return> {
+): FnConstructor<T, (...args: Args) => Return> {
   return ((requirements: Requirements<T>) => {
     // The `bind` method creates a new function that, when called, has its
     // `this` keyword set to the provided value, with a given sequence of arguments
@@ -127,7 +125,7 @@ export function defineFn<
   }) as (
     // The constructor's `requirements` argument is made optional if no dependencies are
     // marked as `required<T>()`. This provides a better developer experience.
-    FnConstructor<T, Args, Return>
+    FnConstructor<T, (...args: Args) => Return>
   );
 }
 
