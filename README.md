@@ -10,36 +10,21 @@
 
 ## What is `injecfn`?
 
-Tired of functions with messy signatures that mix essential dependencies with
-optional configurations? `injecfn` helps you cleanly separate what a function
-**requires** from what it **can** use with sensible defaults. This makes your
-code more modular, testable, and easier to use.
+`injecfn` offers a clean, declarative, and type-safe way to manage dependencies
+for your functions. It helps you separate what a function **requires** from what
+it **can** use with sensible defaults, making your code more modular, testable,
+and easier to reason about.
 
 **The Problem:** Functions often need a mix of dependencies. Some are essential
 (`paymentProcessor`), while others are good to have but can be defaulted
-(`logger`). This can lead to complex signatures and call sites.
+(`logger`). This can lead to complex function signatures, messy call sites, and
+a tight coupling between a function's logic and its environment.
+
+**The `injecfn` Solution:** Decouple dependency resolution from your function's
+core logic using a single, powerful function: `defineFn`.
 
 ```typescript
-// A traditional function with mixed concerns in its signature.
-function processOrder(
-  order: Order,
-  paymentProcessor: PaymentProcessor,
-  logger: Logger = console, // Optional args can make things messy.
-) {
-  logger.log(`Processing order ${order.id}`);
-  paymentProcessor.charge(order.amount);
-}
-
-// Call sites require careful argument positioning or configuration objects.
-processOrder(myOrder, stripeProcessor);
-processOrder(myOrder, stripeProcessor, customLogger);
-```
-
-**The `injecfn` Solution:** Decouple the function's logic from its dependency
-resolution.
-
-```typescript
-import { injecfn } from "injecfn";
+import { defineFn, required } from "@nakanoaas/injecfn";
 
 // 1. Define your dependency types
 interface PaymentProcessor {
@@ -49,15 +34,14 @@ interface Logger {
   log(message: string): void;
 }
 
-// 2. Create a constructor, specifying ONLY the types for required dependencies.
-const constructProcessOrder = injecfn<{
-  paymentProcessor: PaymentProcessor;
-}>().fnWithDefaults(
-  // 3. Provide default implementations. Their types are inferred automatically!
+// 2. Create a "constructor" by defining all dependencies in one place.
+const constructProcessOrder = defineFn(
+  // 3. Mark required dependencies with `required()`. Provide values for defaults.
   {
+    paymentProcessor: required<PaymentProcessor>(),
     logger: console as Logger,
   },
-  // 4. Write your core logic, decoupled from the outside world.
+  // 4. Write your core logic. The types are inferred automatically!
   ({ paymentProcessor, logger }, order: Order) => {
     logger.log(`Processing order ${order.id}`);
     paymentProcessor.charge(order.amount);
@@ -66,7 +50,7 @@ const constructProcessOrder = injecfn<{
 
 // --- At instantiation time, things are much cleaner ---
 
-// You ONLY need to provide the required `paymentProcessor`. `logger` is optional.
+// You ONLY need to provide the required `paymentProcessor`.
 const processOrder = constructProcessOrder({
   paymentProcessor: stripeProcessor,
 });
@@ -80,29 +64,30 @@ const processOrderWithCustomLogging = constructProcessOrder({
 processOrder(myOrder);
 ```
 
-Notice the clarity: Required dependencies are enforced by the type system, while
-optional ones are handled gracefully with type inference. This makes your
-functions robust and a pleasure to use.
+Notice the clarity: Required and default dependencies are declared in a single
+configuration object. The type system enforces that all required dependencies
+are provided, while intelligently inferring the types of defaults.
 
 ## Features
 
-- ✅ **Type-Safe:** Required dependencies are enforced by type checking.
-- 🚀 **Minimalist API:** Just one core function to learn. Get started in
-  minutes.
-- 🧩 **Default Dependencies:** Easily provide default implementations for your
-  dependencies.
+- ✅ **Type-Safe & Declarative:** Define all dependencies in a single object.
+  Required dependencies are enforced by the TypeScript compiler.
+- 🚀 **Minimalist API:** One core function, `defineFn`, is all you need to
+  learn.
+- 🧩 **Smart Defaults:** Provide default implementations for any dependency
+  right where you define it.
 - 📦 **Zero Dependencies:** A single, lightweight file. No baggage.
 - 🌐 **Framework Agnostic:** Works anywhere—Node.js, Deno, browsers, etc.
 
 ## Installation
 
-### Deno (via jsr)
+### Deno (via JSR)
 
 ```bash
 deno add @nakanoaas/injecfn
 ```
 
-### Node.js
+### Node.js / Bun
 
 Using npm:
 
@@ -129,7 +114,6 @@ Here's a step-by-step guide to using `injecfn`.
 ### 1. Define Your Dependencies
 
 First, define the types for the services or values your function will depend on.
-These can be interfaces, type aliases, or even simple functions.
 
 ```typescript
 // A function-based dependency
@@ -143,20 +127,26 @@ interface Logger {
 
 ### 2. Create a Function "Constructor"
 
-Next, use `injecfn` to create a "constructor" for your function. You declare the
-required dependencies as a generic argument and can also provide default
-implementations using `.fnWithDefaults()`.
+Next, use `defineFn` to create a "constructor" for your function. You define all
+dependencies in a single object.
+
+- For dependencies that **must be provided** at construction time, use the
+  `required<T>()` placeholder.
+- For dependencies that should have a **default value**, provide the
+  implementation directly.
 
 ```typescript
-import { injecfn } from "injecfn";
+import { defineFn, required } from "@nakanoaas/injecfn";
 
-// This function requires `greeter`, but `logger` is optional as it has a default.
-const constructMyFunction = injecfn<{ greeter: Greeter }>().fnWithDefaults(
-  // Default dependencies
+const constructMyFunction = defineFn(
   {
-    logger: console as Logger, // `console` is used if no logger is provided
+    // This dependency is required and must be of type `Greeter`.
+    greeter: required<Greeter>(),
+    // This dependency is optional and defaults to `console`.
+    logger: console as Logger,
   },
-  // The actual function logic, with dependencies destructured
+  // The actual function logic, with dependencies destructured.
+  // Their types are fully inferred.
   ({ greeter, logger }, name: string) => {
     const message = greeter(name);
     logger.log(message);
@@ -167,7 +157,8 @@ const constructMyFunction = injecfn<{ greeter: Greeter }>().fnWithDefaults(
 
 ### 3. Inject Dependencies to Get Your Function
 
-Now you can "construct" your function by providing the required dependencies.
+Now you can "construct" your function by calling the constructor. The type
+system will ensure you provide all the `required` dependencies.
 
 ```typescript
 // Provide the required `greeter` dependency. `logger` will use the default.
@@ -178,10 +169,17 @@ const myFunc = constructMyFunction({
 myFunc("World"); // Logs "Hello, World!" to the console
 ```
 
+If you forget a required dependency, you'll get a compile-time error.
+
+```typescript
+// @ts-expect-error: Property 'greeter' is missing.
+const myFunc = constructMyFunction({});
+```
+
 ### 4. Override Defaults When Needed
 
 You can easily override the default dependencies for specific use cases, like
-testing.
+testing or alternate configurations.
 
 ```typescript
 const myFuncForAlerts = constructMyFunction({
@@ -191,34 +189,29 @@ const myFuncForAlerts = constructMyFunction({
   },
 });
 
-myFuncForAlerts("System Failure"); // Pops up an alert with "URGENT: System Failure"
+myFuncForAlerts("System Failure"); // Pops up an alert
 ```
 
 ## API Reference
 
-### `injecfn<Requires>()`
+### `defineFn(dependencies, implementation)`
 
-The entry point for creating a function constructor.
+The core function of `injecfn`. It creates a "constructor" for your
+dependency-injected function.
 
-- **`Requires`**: A generic type parameter for the required dependencies (e.g.,
-  `{ service: MyService }`). If your function has no required dependencies, you
-  can omit this.
+- **`dependencies`**: An object that defines all dependencies for your function.
+  - Use `required<MyType>()` to mark a dependency as mandatory.
+  - Provide a direct value (e.g., `console`, a mock object, a default function)
+    to set a default implementation.
+- **`implementation`**: The function body: `(deps, ...args) => { ... }`. The
+  `deps` argument will be a fully-typed object with all dependencies resolved.
 
-### `.fn(implementation)`
+### `required<T>()`
 
-Defines a function where all dependencies specified in `<Requires>` must be
-provided.
+A placeholder function used inside the `dependencies` object of `defineFn` to
+mark a dependency as required.
 
-- **`implementation`**: The function body: `(deps, ...args) => { ... }`.
-
-### `.fnWithDefaults(defaults, implementation)`
-
-Defines a function with both required and default dependencies.
-
-- **`defaults`**: An object containing default implementations for some
-  dependencies.
-- **`implementation`**: The function body, which receives all merged
-  dependencies.
+- **`T`**: The type of the dependency that must be provided.
 
 ### `Constructed<T>`
 
@@ -227,10 +220,15 @@ constructor. This is especially useful for creating **type-safe mock functions
 for your tests**.
 
 ```typescript
-import { type Constructed, injecfn } from "injecfn";
+import { type Constructed, defineFn, required } from "@nakanoaas/injecfn";
 
-// Given a function constructor for a function that sends emails...
-const constructSendEmail = injecfn<{ emailer: Emailer }>().fn(
+interface Emailer {
+  send(to: string, subject: string): Promise<void>;
+}
+
+// Given a function constructor...
+const constructSendEmail = defineFn(
+  { emailer: required<Emailer>() },
   ({ emailer }, to: string, subject: string) => emailer.send(to, subject),
 );
 
@@ -242,7 +240,6 @@ type SendEmailFn = Constructed<typeof constructSendEmail>;
 // TypeScript will ensure your mock matches the real function's parameters and return type.
 const mockSendEmail: SendEmailFn = async (to, subject) => {
   console.log(`Mock email to ${to} with subject "${subject}"`);
-  // No return needed, it's type-safe!
 };
 ```
 
