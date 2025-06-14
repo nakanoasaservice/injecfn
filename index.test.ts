@@ -157,7 +157,7 @@ describe("defineFn", () => {
       const myFunc = construct({
         serviceA: mockServiceA,
         extra: "value",
-      } as any);
+      } as { serviceA: ServiceA; extra: string });
 
       expect(myFunc()).toBe("from service A");
     });
