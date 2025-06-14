@@ -115,7 +115,7 @@ export function defineFn<
   dependencies: T,
   f: (deps: Dependencies<T>, ...args: Args) => Return,
 ): FnConstructor<T, Args, Return> {
-  const constructor = (requirements: Requirements<T>) => {
+  return ((requirements: Requirements<T>) => {
     // The `bind` method creates a new function that, when called, has its
     // `this` keyword set to the provided value, with a given sequence of arguments
     // preceding any provided when the new function is called.
@@ -124,11 +124,11 @@ export function defineFn<
       null,
       { ...dependencies, ...requirements } as Dependencies<T>,
     );
-  };
-
-  // The constructor's `requirements` argument is made optional if no dependencies are
-  // marked as `required<T>()`. This provides a better developer experience.
-  return constructor as FnConstructor<T, Args, Return>;
+  }) as (
+    // The constructor's `requirements` argument is made optional if no dependencies are
+    // marked as `required<T>()`. This provides a better developer experience.
+    FnConstructor<T, Args, Return>
+  );
 }
 
 /**
