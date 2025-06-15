@@ -1,8 +1,7 @@
 /**
  * A unique symbol used to identify a required dependency placeholder.
- * @internal
  */
-const requiredSymbol = Symbol("required");
+export const requiredSymbol = Symbol("required");
 
 /**
  * A placeholder function to mark a dependency as required.
