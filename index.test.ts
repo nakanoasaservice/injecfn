@@ -1,8 +1,9 @@
 import { describe, it } from "jsr:@std/testing/bdd";
 import { expect } from "jsr:@std/expect";
-import { type Constructed, injecfn } from "./index.ts";
+import { type Constructed, defineFn, required } from "./index.ts";
 
-// Mocks and Interfaces for testing
+// --- Test Setup: Mocks and Interfaces ---
+
 interface ServiceA {
   methodA(): string;
 }
@@ -10,8 +11,6 @@ interface ServiceA {
 interface ServiceB {
   methodB(s: string): string;
 }
-
-type Greeter = (name: string) => string;
 
 interface Logger {
   log(message: string): void;
@@ -25,178 +24,196 @@ const createMockLogger = (): Logger => ({
   },
 });
 
-describe("injecfn", () => {
-  describe("fn", () => {
-    it("should construct a function that receives dependencies", () => {
-      const construct = injecfn<{ serviceA: ServiceA }>().fn(
+const mockServiceA: ServiceA = {
+  methodA: () => "from service A",
+};
+
+const mockServiceB: ServiceB = {
+  methodB: (s) => `ServiceB says: ${s}`,
+};
+
+// --- Test Suite ---
+
+describe("defineFn", () => {
+  describe("Core Behavior", () => {
+    it("should create a constructor that produces a dependency-injected function", () => {
+      const construct = defineFn(
+        { serviceA: required<ServiceA>() },
         ({ serviceA }) => serviceA.methodA(),
       );
+      const myFunc = construct({ serviceA: mockServiceA });
 
-      const serviceA: ServiceA = {
-        methodA: () => "result from A",
-      };
-
-      const myFunc = construct({ serviceA });
-
-      expect(myFunc()).toBe("result from A");
+      expect(myFunc()).toBe("from service A");
     });
 
-    it("should construct a function with arguments", () => {
-      const construct = injecfn<{ serviceB: ServiceB }>().fn(
-        ({ serviceB }, name: string) => serviceB.methodB(name),
+    it("should correctly pass runtime arguments to the final function", () => {
+      const construct = defineFn(
+        { serviceB: required<ServiceB>() },
+        ({ serviceB }, greeting: string, name: string) =>
+          serviceB.methodB(`${greeting}, ${name}`),
       );
+      const myFunc = construct({ serviceB: mockServiceB });
 
-      const serviceB: ServiceB = {
-        methodB: (s) => `Hello, ${s}`,
-      };
-
-      const myFunc = construct({ serviceB });
-
-      expect(myFunc("World")).toBe("Hello, World");
+      expect(myFunc("Hello", "World")).toBe("ServiceB says: Hello, World");
     });
   });
 
-  describe("fnWithDefaults", () => {
-    it("should use default dependencies when none are provided", () => {
-      const mockLogger = createMockLogger();
+  describe("Dependency Resolution", () => {
+    describe("With default dependencies", () => {
+      it("should use default values if no overrides are provided", () => {
+        const mockLogger = createMockLogger();
+        const construct = defineFn(
+          { logger: mockLogger },
+          ({ logger }) => logger.log("default call"),
+        );
 
-      const construct = injecfn().fnWithDefaults(
-        {
-          greeter: (name: string) => `Hi, ${name}`,
-          logger: mockLogger,
-        },
-        ({ greeter, logger }, name: string) => {
-          const msg = greeter(name);
-          logger.log(msg);
-          return msg;
-        },
-      );
+        const myFunc = construct(); // Called without arguments
+        myFunc();
 
-      const myFunc = construct({});
-      const result = myFunc("Default");
+        expect(mockLogger.history).toEqual(["default call"]);
+      });
 
-      expect(result).toBe("Hi, Default");
-      expect(mockLogger.history).toEqual(["Hi, Default"]);
+      it("should allow overriding default dependencies", () => {
+        const defaultLogger = createMockLogger();
+        const customLogger = createMockLogger();
+        const construct = defineFn(
+          { logger: defaultLogger },
+          ({ logger }) => logger.log("message"),
+        );
+
+        const myFunc = construct({ logger: customLogger });
+        myFunc();
+
+        expect(defaultLogger.history).toEqual([]);
+        expect(customLogger.history).toEqual(["message"]);
+      });
     });
 
-    it("should work with construct() as well", () => {
-      const mockLogger = createMockLogger();
+    describe("With mixed dependencies", () => {
+      it("should resolve a mix of required and default dependencies", () => {
+        const mockLogger = createMockLogger();
+        const construct = defineFn(
+          {
+            serviceB: required<ServiceB>(),
+            logger: mockLogger,
+          },
+          ({ serviceB, logger }, text: string) => {
+            logger.log(serviceB.methodB(text));
+          },
+        );
 
-      const construct = injecfn().fnWithDefaults(
+        const myFunc = construct({ serviceB: mockServiceB }); // Only required deps provided
+        myFunc("mixed test");
+
+        expect(mockLogger.history).toEqual(["ServiceB says: mixed test"]);
+      });
+
+      it("should allow overriding defaults while satisfying required dependencies", () => {
+        const defaultLogger = createMockLogger();
+        const customLogger = createMockLogger();
+        const construct = defineFn(
+          {
+            serviceB: required<ServiceB>(),
+            logger: defaultLogger,
+          },
+          ({ serviceB, logger }, text: string) => {
+            logger.log(serviceB.methodB(text));
+          },
+        );
+
+        const myFunc = construct({
+          serviceB: mockServiceB,
+          logger: customLogger,
+        });
+        myFunc("override test");
+
+        expect(defaultLogger.history).toEqual([]);
+        expect(customLogger.history).toEqual(["ServiceB says: override test"]);
+      });
+    });
+  });
+
+  describe("Edge Cases", () => {
+    it("should handle `null` and `undefined` as valid dependency values", () => {
+      const construct = defineFn(
         {
-          greeter: (name: string) => `Hi, ${name}`,
-          logger: mockLogger,
+          depA: null,
+          depB: required<string | undefined>(),
         },
-        ({ greeter, logger }, name: string) => {
-          const msg = greeter(name);
-          logger.log(msg);
-          return msg;
-        },
+        ({ depA, depB }) => ({ depA, depB }),
       );
 
-      const myFunc = construct();
-      const result = myFunc("Default");
-
-      expect(result).toBe("Hi, Default");
-      expect(mockLogger.history).toEqual(["Hi, Default"]);
+      const myFunc = construct({ depB: undefined });
+      expect(myFunc()).toEqual({ depA: null, depB: undefined });
     });
 
-    it("should allow overriding default dependencies", () => {
-      const defaultLogger = createMockLogger();
-      const customLogger = createMockLogger();
-
-      const construct = injecfn().fnWithDefaults(
-        {
-          greeter: (name: string) => `Hi, ${name}`,
-          logger: defaultLogger,
-        },
-        ({ greeter, logger }, name: string) => {
-          const msg = greeter(name);
-          logger.log(msg);
-          return msg;
-        },
+    it("should ignore extraneous properties passed to the constructor", () => {
+      const construct = defineFn(
+        { serviceA: required<ServiceA>() },
+        ({ serviceA }) => serviceA.methodA(),
       );
 
+      // Pass an extra property, which should be ignored
       const myFunc = construct({
-        greeter: (name: string) => `Yo, ${name}`,
-        logger: customLogger,
-      });
+        serviceA: mockServiceA,
+        extra: "value",
+      } as { serviceA: ServiceA; extra: string });
 
-      const result = myFunc("Custom");
-
-      expect(result).toBe("Yo, Custom");
-      expect(defaultLogger.history).toEqual([]);
-      expect(customLogger.history).toEqual(["Yo, Custom"]);
-    });
-
-    it("should merge required and default dependencies", () => {
-      const mockLogger = createMockLogger();
-
-      const construct = injecfn<{ serviceB: ServiceB }>().fnWithDefaults(
-        { logger: mockLogger },
-        ({ serviceB, logger }, text: string) => {
-          const msg = serviceB.methodB(text);
-          logger.log(msg);
-        },
-      );
-
-      const serviceB: ServiceB = {
-        methodB: (s) => `ServiceB says: ${s}`,
-      };
-
-      const myFunc = construct({ serviceB });
-      myFunc("Test");
-
-      expect(mockLogger.history).toEqual(["ServiceB says: Test"]);
-    });
-
-    it("should work with a function to create dependencies", () => {
-      const defaultLogger = createMockLogger();
-      const customLogger = createMockLogger();
-
-      const construct = injecfn().fnWithDefaults(
-        { logger: defaultLogger },
-        ({ logger }, message: string) => {
-          logger.log(message);
-        },
-      );
-
-      const myFunc = construct((defaults) => {
-        expect(defaults.logger).toBe(defaultLogger); // Check if we get the defaults
-        return { logger: customLogger };
-      });
-
-      myFunc("message from function deps");
-
-      expect(defaultLogger.history).toEqual([]);
-      expect(customLogger.history).toEqual(["message from function deps"]);
+      expect(myFunc()).toBe("from service A");
     });
   });
 
-  describe("Constructed type helper", () => {
-    it("should correctly infer the function type", () => {
-      // This test primarily serves as a compile-time check to ensure the
-      // Constructed type utility works as expected. The runtime assertions
-      // confirm that the function behaves correctly.
+  describe("Type System Integration", () => {
+    it("should infer dependency types correctly inside the implementation", () => {
+      // This is a compile-time test. If it compiles without errors, it passes.
+      const construct = defineFn(
+        {
+          serviceA: required<ServiceA>(),
+          logger: createMockLogger(),
+        },
+        (deps) => {
+          const result: string = deps.serviceA.methodA();
+          deps.logger.log(result);
+        },
+      );
+      // Runtime check to ensure it actually works
+      const myFunc = construct({ serviceA: mockServiceA });
+      expect(myFunc).toBeInstanceOf(Function);
+    });
 
-      const construct = injecfn<{ serviceA: ServiceA }>().fn(
-        ({ serviceA }) => serviceA.methodA(),
+    it("`Constructed` utility should correctly infer the final function's signature", () => {
+      const construct = defineFn(
+        { serviceA: required<ServiceA>() },
+        (_deps, name: string): string => `Hello, ${name}`,
+      );
+      type MyFunc = Constructed<typeof construct>;
+
+      // `myFunc` should be typed as `(name: string) => string`
+      const myFunc: MyFunc = construct({ serviceA: mockServiceA });
+      const result: string = myFunc("World");
+      expect(result).toBe("Hello, World");
+
+      // @ts-expect-error The function should require one argument.
+      myFunc();
+      // @ts-expect-error The argument should be a string.
+      myFunc(123);
+    });
+
+    it("should produce a type error if a required dependency is missing", () => {
+      const construct = defineFn(
+        { serviceA: required<ServiceA>() },
+        () => {},
       );
 
-      type MyFuncType = Constructed<typeof construct>;
+      // @ts-expect-error Property 'serviceA' is missing.
+      construct({});
+    });
 
-      const serviceA: ServiceA = {
-        methodA: () => "type test",
-      };
+    it("should produce a type error if an override has the wrong type", () => {
+      const construct = defineFn({ serviceA: mockServiceA }, () => {});
 
-      // The 'myFunc' variable is now correctly typed as () => string
-      const myFunc: MyFuncType = construct({ serviceA });
-
-      const result: string = myFunc();
-      expect(result).toBe("type test");
-
-      // @ts-expect-error myFunc should not accept arguments
-      myFunc("should fail");
+      // @ts-expect-error Type 'string' is not assignable to type 'ServiceA'.
+      construct({ serviceA: "not a service" });
     });
   });
 });
