@@ -58,16 +58,6 @@ export type Requirements<T extends Record<string, unknown>> =
   };
 
 /**
- * A type-level boolean to check if a dependency definition object has any
- * `Required<T>` placeholders.
- * @template R - The dependency definition object.
- * @internal
- */
-type HasRequirements<
-  R extends Record<string, unknown>,
-> = Extract<R[keyof R], Required<unknown>> extends never ? false : true;
-
-/**
  * Represents the constructor function returned by `defineFn`.
  * It is a callable function that may or may not require an argument,
  * depending on whether there are required dependencies.
@@ -85,8 +75,9 @@ export interface FnConstructor<
    *                       This argument is optional if no dependencies are marked as `required`.
    */
   (
-    ...args: HasRequirements<T> extends true ? [requirements: Requirements<T>]
-      : [requirements?: Requirements<T>]
+    ...args: Extract<T[keyof T], Required<unknown>> extends never
+      ? [requirements?: Requirements<T>]
+      : [requirements: Requirements<T>]
   ): Fn;
 }
 
