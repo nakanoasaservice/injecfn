@@ -16,6 +16,12 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Run fmt
+        run: deno fmt --check
+
+      - name: Run lint
+        run: deno lint
+
       - name: Run tests
         run: deno test
 
