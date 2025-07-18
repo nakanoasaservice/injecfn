@@ -213,14 +213,18 @@ mark a dependency as required.
 
 - **`T`**: The type of the dependency that must be provided.
 
-### `Constructed<T>`
+### `Constructed<T>` (Deprecated)
+
+> [!WARNING]
+> This type is deprecated and will be removed in a future version. Please use
+> `ReturnType<typeof yourConstructor>` instead.
 
 A utility type to extract the final, dependency-injected function type from a
 constructor. This is especially useful for creating **type-safe mock functions
 for your tests**.
 
 ```typescript
-import { type Constructed, defineFn, required } from "@nakanoaas/injecfn";
+import { defineFn, required } from "@nakanoaas/injecfn";
 
 interface Emailer {
   send(to: string, subject: string): Promise<void>;
@@ -232,8 +236,8 @@ const constructSendEmail = defineFn(
   ({ emailer }, to: string, subject: string) => emailer.send(to, subject),
 );
 
-// ...you can easily extract its precise function type.
-type SendEmailFn = Constructed<typeof constructSendEmail>;
+// ...you can easily extract its precise function type using ReturnType.
+type SendEmailFn = ReturnType<typeof constructSendEmail>;
 //   ^? type SendEmailFn = (to: string, subject: string) => Promise<void>
 
 // This lets you create a fully type-safe mock without re-writing the signature.

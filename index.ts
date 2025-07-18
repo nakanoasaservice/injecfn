@@ -121,6 +121,7 @@ export function defineFn<
 
 /**
  * A utility type to extract the final, constructed function type from a constructor.
+ * @deprecated Use `ReturnType<typeof yourConstructorFn>` instead.
  *
  * @template ConstructorFn - The type of the function constructor returned by `defineFn`.
  * @example
@@ -129,7 +130,7 @@ export function defineFn<
  *
  * // Extracts the type of the function created after providing dependencies.
  * // type MyFn = () => void
- * type MyFn = Constructed<typeof constructMyFn>;
+ * type MyFn = ReturnType<typeof constructMyFn>;
  * ```
  */
 export type Constructed<
