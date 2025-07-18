@@ -35,8 +35,9 @@ type Required<T> = typeof requiredSymbol & {
  * A utility type that resolves the final dependency types,
  * replacing `Required<T>` placeholders with their actual type `T`.
  * @template T - The dependency definition object.
+ * @internal
  */
-export type Dependencies<T extends Record<string, unknown>> = {
+type Dependencies<T extends Record<string, unknown>> = {
   readonly [K in keyof T]: T[K] extends Required<infer U> ? U : T[K];
 };
 
@@ -45,8 +46,9 @@ export type Dependencies<T extends Record<string, unknown>> = {
  * It produces an object type where required dependencies are mandatory,
  * and dependencies with default values are optional (allowing overrides).
  * @template T - The dependency definition object.
+ * @internal
  */
-export type Requirements<T extends Record<string, unknown>> =
+type Requirements<T extends Record<string, unknown>> =
   & {
     // Extracts keys for properties typed as `Required<T>` and makes them non-optional.
     [K in keyof T as T[K] extends Required<unknown> ? K : never]: T[K] extends
