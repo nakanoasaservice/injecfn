@@ -17,6 +17,7 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "erasableSyntaxOnly": true,
     "lib": ["deno.ns"]
   },
   "imports": {
