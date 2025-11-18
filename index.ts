@@ -1,4 +1,5 @@
 /**
+ * @internal
  * A unique symbol used to identify a required dependency placeholder.
  */
 export const requiredSymbol = Symbol("required");
