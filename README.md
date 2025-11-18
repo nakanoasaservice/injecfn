@@ -213,6 +213,34 @@ mark a dependency as required.
 
 - **`T`**: The type of the dependency that must be provided.
 
+### `ConstructorOf<Fn>`
+
+A utility type that ensures a constructor function produces a function matching
+a specific type.
+
+This type is useful for verifying that a function constructor created with
+`defineFn` produces a function that satisfies a desired function type, typically
+defined in your domain layer.
+
+- **`Fn`**: The function type that the constructor should produce.
+
+```typescript
+import { type ConstructorOf, defineFn, required } from "@nakanoaas/injecfn";
+
+// Define a type for a repository function in your domain layer
+type FindUserById = (id: string) => Promise<User | null>;
+
+// Create a constructor and verify it matches the type
+const constructFindUserById = defineFn(
+  { db: required<Database>() },
+  ({ db }, id: string) => {
+    return db.query("SELECT * FROM users WHERE id = ?", [id]);
+  },
+) satisfies ConstructorOf<FindUserById>;
+
+// TypeScript will error if the function signature doesn't match FindUserById
+```
+
 ### `Constructed<T>` (Deprecated)
 
 > [!WARNING]
