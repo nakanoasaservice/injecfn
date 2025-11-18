@@ -225,7 +225,7 @@ defined in your domain layer.
 - **`Fn`**: The function type that the constructor should produce.
 
 ```typescript
-import { ConstructorOf, defineFn, required } from "@nakanoaas/injecfn";
+import { type ConstructorOf, defineFn, required } from "@nakanoaas/injecfn";
 
 // Define a type for a repository function in your domain layer
 type FindUserById = (id: string) => Promise<User | null>;
