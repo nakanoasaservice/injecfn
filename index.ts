@@ -139,3 +139,30 @@ export function defineFn<
 export type Constructed<
   ConstructorFn extends (requirements: never) => (...args: never[]) => unknown,
 > = ReturnType<ConstructorFn>;
+
+/**
+ * A utility type that ensures a constructor function produces a function matching a specific type.
+ *
+ * This type is useful for verifying that a function constructor created with `defineFn`
+ * produces a function that satisfies a desired function type, typically defined in your domain layer.
+ *
+ * @template Fn - The function type that the constructor should produce.
+ * @example
+ * ```ts
+ * // Define a type for a repository function in your domain layer
+ * type FindUserById = (id: string) => Promise<User | null>;
+ *
+ * // Create a constructor and verify it matches the type
+ * const constructFindUserById = defineFn(
+ *   { db: required<Database>() },
+ *   ({ db }, id: string) => {
+ *     return db.query("SELECT * FROM users WHERE id = ?", [id]);
+ *   }
+ * ) satisfies ConstructorOf<FindUserById>;
+ *
+ * // TypeScript will error if the function signature doesn't match FindUserById
+ * ```
+ */
+export type ConstructorOf<Fn extends (...args: never[]) => unknown> = (
+  requirements: never,
+) => Fn;
