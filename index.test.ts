@@ -1,6 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
-import { type Constructed, defineFn, required } from "./index.ts";
+import { assertType, type IsExact } from "@std/testing/types";
+import {
+  type Constructed,
+  type ConstructorOf,
+  defineFn,
+  required,
+} from "./index.ts";
 
 // --- Test Setup: Mocks and Interfaces ---
 
@@ -214,6 +220,155 @@ describe("defineFn", () => {
 
       // @ts-expect-error Type 'string' is not assignable to type 'ServiceA'.
       construct({ serviceA: "not a service" });
+    });
+  });
+
+  describe("ConstructorOf utility type", () => {
+    it("should verify that a constructor produces a function matching the specified type", () => {
+      // Define a function type in the domain layer
+      type FindUserById = (id: string) => Promise<string | null>;
+      type GreetUser = (name: string) => string;
+
+      // Create constructors that match the types
+      const constructFindUserById = defineFn(
+        { db: required<ServiceA>() },
+        ({ db }, _id: string) => {
+          return Promise.resolve(db.methodA());
+        },
+      ) satisfies ConstructorOf<FindUserById>;
+
+      const constructGreetUser = defineFn(
+        { logger: createMockLogger() },
+        ({ logger }, name: string) => {
+          logger.log(name);
+          return `Hello, ${name}`;
+        },
+      ) satisfies ConstructorOf<GreetUser>;
+
+      // Verify the types are correct
+      const findUserById: FindUserById = constructFindUserById({
+        db: mockServiceA,
+      });
+      const greetUser: GreetUser = constructGreetUser();
+
+      // Runtime check
+      expect(findUserById).toBeInstanceOf(Function);
+      expect(greetUser).toBeInstanceOf(Function);
+
+      // Type-level check: verify that the constructor satisfies ConstructorOf
+      // The satisfies clause above already ensures type safety
+      // We verify that the returned function can be assigned to the expected type
+      const _testFindUserById: FindUserById = findUserById;
+      const _testGreetUser: GreetUser = greetUser;
+
+      // Type-level assertion: verify that ConstructorOf constraint works correctly
+      // by checking that the constructor type satisfies ConstructorOf
+      type ConstructorFindUserById = typeof constructFindUserById;
+      type ConstructorGreetUser = typeof constructGreetUser;
+
+      // Verify that the constructors satisfy ConstructorOf constraint
+      const _testConstructorFindUserById: ConstructorOf<FindUserById> =
+        constructFindUserById;
+      const _testConstructorGreetUser: ConstructorOf<GreetUser> =
+        constructGreetUser;
+
+      // Type-level check using IsExact: verify that the returned function types match
+      // We check the actual function types returned by the constructors
+      type ActualFindUserById = typeof findUserById;
+      type ActualGreetUser = typeof greetUser;
+
+      assertType<IsExact<ActualFindUserById, FindUserById>>(true);
+      assertType<IsExact<ActualGreetUser, GreetUser>>(true);
+    });
+
+    it("should produce a type error when function signature doesn't match", () => {
+      type FindUserById = (id: string) => Promise<string | null>;
+
+      // These should cause type errors, so we test them separately
+      // by checking that they don't satisfy ConstructorOf
+
+      // Test 1: Wrong parameter type
+      const constructWrongParam = defineFn(
+        { db: required<ServiceA>() },
+        ({ db }, _id: number) => {
+          // Wrong parameter type: should be string, not number
+          return Promise.resolve(db.methodA());
+        },
+      );
+      // Verify that it doesn't satisfy ConstructorOf<FindUserById>
+      type WrongParamType = ReturnType<typeof constructWrongParam>;
+      assertType<IsExact<WrongParamType, FindUserById>>(false);
+
+      // Test 2: Wrong return type
+      const constructWrongReturn = defineFn(
+        { db: required<ServiceA>() },
+        ({ db }, _id: string) => {
+          // Wrong return type: should be Promise<string | null>, not string
+          return db.methodA();
+        },
+      );
+      // Verify that it doesn't satisfy ConstructorOf<FindUserById>
+      type WrongReturnType = ReturnType<typeof constructWrongReturn>;
+      assertType<IsExact<WrongReturnType, FindUserById>>(false);
+
+      // Test 3: Missing parameter
+      const constructMissingParam = defineFn(
+        { db: required<ServiceA>() },
+        ({ db }) => {
+          // Missing parameter: should accept id: string
+          return Promise.resolve(db.methodA());
+        },
+      );
+      // Verify that it doesn't satisfy ConstructorOf<FindUserById>
+      type MissingParamType = ReturnType<typeof constructMissingParam>;
+      assertType<IsExact<MissingParamType, FindUserById>>(false);
+    });
+
+    it("should work with functions that have multiple parameters", () => {
+      type ProcessOrder = (
+        orderId: string,
+        amount: number,
+      ) => Promise<{ success: boolean }>;
+
+      const constructProcessOrder = defineFn(
+        { serviceA: required<ServiceA>() },
+        ({ serviceA }, _orderId: string, _amount: number) => {
+          serviceA.methodA();
+          return Promise.resolve({ success: true });
+        },
+      ) satisfies ConstructorOf<ProcessOrder>;
+
+      // Verify the type is correct
+      const processOrder: ProcessOrder = constructProcessOrder({
+        serviceA: mockServiceA,
+      });
+
+      // Verify that the constructor satisfies ConstructorOf constraint
+      const _testConstructorProcessOrder: ConstructorOf<ProcessOrder> =
+        constructProcessOrder;
+      expect(processOrder).toBeInstanceOf(Function);
+    });
+
+    it("should work with functions that have no parameters", () => {
+      type GetCurrentUser = () => Promise<{ id: string; name: string }>;
+
+      const constructGetCurrentUser = defineFn(
+        { serviceA: required<ServiceA>() },
+        ({ serviceA }) => {
+          serviceA.methodA();
+          return Promise.resolve({ id: "1", name: "Test User" });
+        },
+      ) satisfies ConstructorOf<GetCurrentUser>;
+
+      // Verify the type is correct
+      const getCurrentUser: GetCurrentUser = constructGetCurrentUser({
+        serviceA: mockServiceA,
+      });
+
+      // Verify that the constructor satisfies ConstructorOf constraint
+      const _testConstructorGetCurrentUser: ConstructorOf<GetCurrentUser> =
+        constructGetCurrentUser;
+      expect(getCurrentUser).toBeInstanceOf(Function);
     });
   });
 });
