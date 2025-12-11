@@ -32,10 +32,11 @@ await build({
     version: config.version,
     license: config.license,
     sideEffects: false,
+    type: "module",
     description: "Effortless, Type-Safe Dependency Injection for Functions.",
     repository: {
       type: "git",
-      url: "git://github.com/nakanoasaservice/injecfn.git",
+      url: "git+https://github.com/nakanoasaservice/injecfn.git",
     },
     bugs: {
       url: "https://github.com/nakanoasaservice/injecfn/issues",
