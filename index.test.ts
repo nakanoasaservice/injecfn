@@ -1,6 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
-import { expect } from "@std/expect";
-import { assertType, type IsExact } from "@std/testing/types";
+import { describe, it, expect, expectTypeOf } from "vite-plus/test";
 import {
   type Constructed,
   type ConstructorOf,
@@ -68,9 +66,8 @@ describe("defineFn", () => {
     describe("With default dependencies", () => {
       it("should use default values if no overrides are provided", () => {
         const mockLogger = createMockLogger();
-        const construct = defineFn(
-          { logger: mockLogger },
-          ({ logger }) => logger.log("default call"),
+        const construct = defineFn({ logger: mockLogger }, ({ logger }) =>
+          logger.log("default call"),
         );
 
         const myFunc = construct(); // Called without arguments
@@ -82,9 +79,8 @@ describe("defineFn", () => {
       it("should allow overriding default dependencies", () => {
         const defaultLogger = createMockLogger();
         const customLogger = createMockLogger();
-        const construct = defineFn(
-          { logger: defaultLogger },
-          ({ logger }) => logger.log("message"),
+        const construct = defineFn({ logger: defaultLogger }, ({ logger }) =>
+          logger.log("message"),
         );
 
         const myFunc = construct({ logger: customLogger });
@@ -206,10 +202,7 @@ describe("defineFn", () => {
     });
 
     it("should produce a type error if a required dependency is missing", () => {
-      const construct = defineFn(
-        { serviceA: required<ServiceA>() },
-        () => {},
-      );
+      const construct = defineFn({ serviceA: required<ServiceA>() }, () => {});
 
       // @ts-expect-error Property 'serviceA' is missing.
       construct({});
@@ -263,8 +256,6 @@ describe("defineFn", () => {
 
       // Type-level assertion: verify that ConstructorOf constraint works correctly
       // by checking that the constructor type satisfies ConstructorOf
-      type ConstructorFindUserById = typeof constructFindUserById;
-      type ConstructorGreetUser = typeof constructGreetUser;
 
       // Verify that the constructors satisfy ConstructorOf constraint
       const _testConstructorFindUserById: ConstructorOf<FindUserById> =
@@ -277,8 +268,8 @@ describe("defineFn", () => {
       type ActualFindUserById = typeof findUserById;
       type ActualGreetUser = typeof greetUser;
 
-      assertType<IsExact<ActualFindUserById, FindUserById>>(true);
-      assertType<IsExact<ActualGreetUser, GreetUser>>(true);
+      expectTypeOf<ActualFindUserById>().toEqualTypeOf<FindUserById>();
+      expectTypeOf<ActualGreetUser>().toEqualTypeOf<GreetUser>();
     });
 
     it("should produce a type error when function signature doesn't match", () => {
@@ -297,7 +288,7 @@ describe("defineFn", () => {
       );
       // Verify that it doesn't satisfy ConstructorOf<FindUserById>
       type WrongParamType = ReturnType<typeof constructWrongParam>;
-      assertType<IsExact<WrongParamType, FindUserById>>(false);
+      expectTypeOf<WrongParamType>().not.toEqualTypeOf<FindUserById>();
 
       // Test 2: Wrong return type
       const constructWrongReturn = defineFn(
@@ -309,7 +300,7 @@ describe("defineFn", () => {
       );
       // Verify that it doesn't satisfy ConstructorOf<FindUserById>
       type WrongReturnType = ReturnType<typeof constructWrongReturn>;
-      assertType<IsExact<WrongReturnType, FindUserById>>(false);
+      expectTypeOf<WrongReturnType>().not.toEqualTypeOf<FindUserById>();
 
       // Test 3: Missing parameter
       const constructMissingParam = defineFn(
@@ -321,7 +312,7 @@ describe("defineFn", () => {
       );
       // Verify that it doesn't satisfy ConstructorOf<FindUserById>
       type MissingParamType = ReturnType<typeof constructMissingParam>;
-      assertType<IsExact<MissingParamType, FindUserById>>(false);
+      expectTypeOf<MissingParamType>().not.toEqualTypeOf<FindUserById>();
     });
 
     it("should work with functions that have multiple parameters", () => {

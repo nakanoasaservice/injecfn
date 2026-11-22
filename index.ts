@@ -49,16 +49,15 @@ type Dependencies<T extends Record<string, unknown>> = {
  * @template T - The dependency definition object.
  * @internal
  */
-type Requirements<T extends Record<string, unknown>> =
-  & {
-    // Extracts keys for properties typed as `Required<T>` and makes them non-optional.
-    [K in keyof T as T[K] extends Required<unknown> ? K : never]: T[K] extends
-      Required<infer U> ? U : never;
-  }
-  & {
-    // Extracts keys for properties that are not `Required<T>` and makes them optional.
-    [K in keyof T as T[K] extends Required<unknown> ? never : K]?: T[K];
-  };
+type Requirements<T extends Record<string, unknown>> = {
+  // Extracts keys for properties typed as `Required<T>` and makes them non-optional.
+  [
+    K in keyof T as T[K] extends Required<unknown> ? K : never
+  ]: T[K] extends Required<infer U> ? U : never;
+} & {
+  // Extracts keys for properties that are not `Required<T>` and makes them optional.
+  [K in keyof T as T[K] extends Required<unknown> ? never : K]?: T[K];
+};
 
 /**
  * Represents the constructor function returned by `defineFn`.
@@ -111,15 +110,14 @@ export function defineFn<
     // `this` keyword set to the provided value, with a given sequence of arguments
     // preceding any provided when the new function is called.
     // We use `null` for `this` as it's not used, and we pre-fill the `deps` argument.
-    return f.bind(
-      null,
-      { ...dependencies, ...requirements } as Dependencies<T>,
-    );
-  }) as (
+    return f.bind(null, {
+      ...dependencies,
+      ...requirements,
+    } as Dependencies<T>);
+  }) as
     // The constructor's `requirements` argument is made optional if no dependencies are
     // marked as `required<T>()`. This provides a better developer experience.
-    FnConstructor<T, (...args: Args) => Return>
-  );
+    FnConstructor<T, (...args: Args) => Return>;
 }
 
 /**
